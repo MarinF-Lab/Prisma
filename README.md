@@ -50,3 +50,12 @@ const db = admin.firestore();
 ```
 
 O importar `scripts/curatedColors.json` a mano desde la consola de Firestore, un documento por color.
+
+## PWA
+
+La app es instalable (service worker + manifest, vía `vite-plugin-pwa`, configurado en `vite.config.js`):
+
+- El manifest usa `start_url`/`scope` relativos (`"./"`) a propósito, para no depender de mayúsculas/minúsculas en el nombre del repo (mismo motivo que el `base` de Vite — ver commit de la corrección del deploy a GitHub Pages).
+- Los íconos (`public/icons/icon-192.png`, `icon-512.png`, `icon-512-maskable.png`) tienen fondo `#0A0A0F` (mismo tono que el tema oscuro) con la gema del logo centrada.
+- `registerType: "autoUpdate"`: el service worker se actualiza solo en cada deploy, sin pedirle confirmación a quien lo tenga instalado.
+- Solo se ve en producción (`npm run build && npm run preview`) — en `npm run dev` el plugin no genera el service worker.
