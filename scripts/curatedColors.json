@@ -1,0 +1,512 @@
+[
+  {
+    "name": "Rosa Nube",
+    "hex": "#F7C6D9",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Menta Suave",
+    "hex": "#C4EAD6",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Lavanda",
+    "hex": "#D9CDF0",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Durazno",
+    "hex": "#FBDCC0",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Coral Vivo",
+    "hex": "#FF6B5B",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Azul Eléctrico",
+    "hex": "#2B6CFF",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Amarillo Sol",
+    "hex": "#FFD23F",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Verde Lima",
+    "hex": "#7ED321",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Grafito",
+    "hex": "#1C1E26",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Vino",
+    "hex": "#4A1030",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Azul Medianoche",
+    "hex": "#0F1F3D",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Verde Bosque",
+    "hex": "#123524",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Terracota",
+    "hex": "#B5603E",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Arena",
+    "hex": "#C9A876",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Musgo",
+    "hex": "#6E7454",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Café Tostado",
+    "hex": "#5C3D2E",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Rosa Neón",
+    "hex": "#FF2DA8",
+    "cat": "Neón"
+  },
+  {
+    "name": "Verde Neón",
+    "hex": "#39FF6A",
+    "cat": "Neón"
+  },
+  {
+    "name": "Cian Neón",
+    "hex": "#00F0FF",
+    "cat": "Neón"
+  },
+  {
+    "name": "Violeta Neón",
+    "hex": "#A64BFF",
+    "cat": "Neón"
+  },
+  {
+    "name": "Rojo Pastel",
+    "hex": "#EBD1CB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Naranja Pastel",
+    "hex": "#EBE0CB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Dorado Pastel",
+    "hex": "#E9EBCB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Lima Pastel",
+    "hex": "#DAEBCB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Verde Pastel",
+    "hex": "#CBEBCC",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Esmeralda Pastel",
+    "hex": "#CBEBDA",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Turquesa Pastel",
+    "hex": "#CBEBE9",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Celeste Pastel",
+    "hex": "#CBDFEB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Azul Pastel",
+    "hex": "#CBD0EB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Índigo Pastel",
+    "hex": "#D5CBEB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Violeta Pastel",
+    "hex": "#E4CBEB",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Magenta Pastel",
+    "hex": "#EBCBE3",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Rosa Pastel",
+    "hex": "#EBCBD5",
+    "cat": "Pasteles"
+  },
+  {
+    "name": "Rojo Vibrante",
+    "hex": "#EE4B2B",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Naranja Vibrante",
+    "hex": "#EEA62B",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Dorado Vibrante",
+    "hex": "#DEEE2B",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Lima Vibrante",
+    "hex": "#82EE2B",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Verde Vibrante",
+    "hex": "#2BEE2E",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Esmeralda Vibrante",
+    "hex": "#2BEE86",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Turquesa Vibrante",
+    "hex": "#2BEEE1",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Celeste Vibrante",
+    "hex": "#2BA0EE",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Azul Vibrante",
+    "hex": "#2B48EE",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Índigo Vibrante",
+    "hex": "#682BEE",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Violeta Vibrante",
+    "hex": "#C42BEE",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Magenta Vibrante",
+    "hex": "#EE2BBD",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Rosa Vibrante",
+    "hex": "#EE2B65",
+    "cat": "Vibrantes"
+  },
+  {
+    "name": "Rojo Oscuro",
+    "hex": "#431B14",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Naranja Oscuro",
+    "hex": "#433214",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Dorado Oscuro",
+    "hex": "#3F4314",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Lima Oscuro",
+    "hex": "#294314",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Verde Oscuro",
+    "hex": "#144314",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Esmeralda Oscuro",
+    "hex": "#14432A",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Turquesa Oscuro",
+    "hex": "#144340",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Celeste Oscuro",
+    "hex": "#143043",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Azul Oscuro",
+    "hex": "#141B43",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Índigo Oscuro",
+    "hex": "#231443",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Violeta Oscuro",
+    "hex": "#391443",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Magenta Oscuro",
+    "hex": "#431437",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Rosa Oscuro",
+    "hex": "#431422",
+    "cat": "Oscuros"
+  },
+  {
+    "name": "Rojo Tierra",
+    "hex": "#9E5647",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Naranja Tierra",
+    "hex": "#9E7E47",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Dorado Tierra",
+    "hex": "#979E47",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Lima Tierra",
+    "hex": "#6E9E47",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Verde Tierra",
+    "hex": "#479E49",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Esmeralda Tierra",
+    "hex": "#479E70",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Turquesa Tierra",
+    "hex": "#479E99",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Celeste Tierra",
+    "hex": "#477B9E",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Azul Tierra",
+    "hex": "#47549E",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Índigo Tierra",
+    "hex": "#63479E",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Violeta Tierra",
+    "hex": "#8B479E",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Magenta Tierra",
+    "hex": "#9E4789",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Rosa Tierra",
+    "hex": "#9E4761",
+    "cat": "Tierra"
+  },
+  {
+    "name": "Rojo Neón",
+    "hex": "#FA502E",
+    "cat": "Neón"
+  },
+  {
+    "name": "Naranja Neón",
+    "hex": "#FAAF2E",
+    "cat": "Neón"
+  },
+  {
+    "name": "Dorado Neón",
+    "hex": "#E9FA2E",
+    "cat": "Neón"
+  },
+  {
+    "name": "Lima Neón",
+    "hex": "#8AFA2E",
+    "cat": "Neón"
+  },
+  {
+    "name": "Verde Neón",
+    "hex": "#2EFA32",
+    "cat": "Neón"
+  },
+  {
+    "name": "Esmeralda Neón",
+    "hex": "#2EFA8D",
+    "cat": "Neón"
+  },
+  {
+    "name": "Turquesa Neón",
+    "hex": "#2EFAEC",
+    "cat": "Neón"
+  },
+  {
+    "name": "Celeste Neón",
+    "hex": "#2EA8FA",
+    "cat": "Neón"
+  },
+  {
+    "name": "Azul Neón",
+    "hex": "#2E4DFA",
+    "cat": "Neón"
+  },
+  {
+    "name": "Índigo Neón",
+    "hex": "#6F2EFA",
+    "cat": "Neón"
+  },
+  {
+    "name": "Violeta Neón",
+    "hex": "#CE2EFA",
+    "cat": "Neón"
+  },
+  {
+    "name": "Magenta Neón",
+    "hex": "#FA2EC7",
+    "cat": "Neón"
+  },
+  {
+    "name": "Rosa Neón",
+    "hex": "#FA2E6B",
+    "cat": "Neón"
+  },
+  {
+    "name": "Gris 50",
+    "hex": "#F2F2F2",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 100",
+    "hex": "#E6E6E6",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 200",
+    "hex": "#CCCCCC",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 300",
+    "hex": "#B3B3B3",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 400",
+    "hex": "#999999",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 500",
+    "hex": "#808080",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 600",
+    "hex": "#666666",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 700",
+    "hex": "#4D4D4D",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 800",
+    "hex": "#333333",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 900",
+    "hex": "#1A1A1A",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris 950",
+    "hex": "#0D0D0D",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Blanco Puro",
+    "hex": "#FFFFFF",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Negro Puro",
+    "hex": "#000000",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Perla",
+    "hex": "#F4F3F0",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris Cálido",
+    "hex": "#988C81",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Gris Frío",
+    "hex": "#818C98",
+    "cat": "Monocromáticos"
+  },
+  {
+    "name": "Carbón",
+    "hex": "#1D1916",
+    "cat": "Monocromáticos"
+  }
+]
