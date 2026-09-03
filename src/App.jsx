@@ -1,4 +1,9 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useAuth } from "./useAuth.js";
+import { useUserPalettes } from "./useUserPalettes.js";
+import { useColorLibrary } from "./useColorLibrary.js";
+import { LoginModal } from "./LoginModal.jsx";
+import { ExportModal } from "./ExportModal.jsx";
 
 /* ============================================================
    PRISMA — Muestrario y generador de combinaciones de color
@@ -82,12 +87,14 @@ const HARMONIES = {
   analogo: (h) => [h - 30, h, h + 30],
   triadico: (h) => [h, h + 120, h + 240],
   tetradico: (h) => [h, h + 90, h + 180, h + 270],
-  monocromatico: (h) => [h, h, h, h, h, h],
+  dividido: (h) => [h, h + 150, h + 210],
+  compuesto: (h) => [h, h + 60, h + 180, h + 240],
+  monocromatico: (h) => [h, h, h, h, h, h, h, h, h, h],
 };
 function generateHarmony(baseHex, type, count) {
   const { h, s, l } = hexToHsl(baseHex);
   if (type === "monocromatico") {
-    const lights = [72, 60, 48, 36, 24, 14].slice(0, count);
+    const lights = [92, 82, 72, 62, 52, 44, 36, 28, 20, 12].slice(0, count);
     return lights.map((ll) => hslToHex(h, Math.max(s, 35), ll));
   }
   if (type === "aleatorio") {
@@ -113,33 +120,6 @@ function randomHex() {
 
 const CATEGORIES = ["Pasteles", "Vibrantes", "Oscuros", "Tierra", "Neón", "Monocromáticos"];
 
-const COLOR_LIBRARY = [
-  { name: "Rosa Nube", hex: "#F7C6D9", cat: "Pasteles" },
-  { name: "Menta Suave", hex: "#C4EAD6", cat: "Pasteles" },
-  { name: "Lavanda", hex: "#D9CDF0", cat: "Pasteles" },
-  { name: "Durazno", hex: "#FBDCC0", cat: "Pasteles" },
-  { name: "Coral Vivo", hex: "#FF6B5B", cat: "Vibrantes" },
-  { name: "Azul Eléctrico", hex: "#2B6CFF", cat: "Vibrantes" },
-  { name: "Amarillo Sol", hex: "#FFD23F", cat: "Vibrantes" },
-  { name: "Verde Lima", hex: "#7ED321", cat: "Vibrantes" },
-  { name: "Grafito", hex: "#1C1E26", cat: "Oscuros" },
-  { name: "Vino", hex: "#4A1030", cat: "Oscuros" },
-  { name: "Azul Medianoche", hex: "#0F1F3D", cat: "Oscuros" },
-  { name: "Verde Bosque", hex: "#123524", cat: "Oscuros" },
-  { name: "Terracota", hex: "#B5603E", cat: "Tierra" },
-  { name: "Arena", hex: "#C9A876", cat: "Tierra" },
-  { name: "Musgo", hex: "#6E7454", cat: "Tierra" },
-  { name: "Café Tostado", hex: "#5C3D2E", cat: "Tierra" },
-  { name: "Rosa Neón", hex: "#FF2DA8", cat: "Neón" },
-  { name: "Verde Neón", hex: "#39FF6A", cat: "Neón" },
-  { name: "Cian Neón", hex: "#00F0FF", cat: "Neón" },
-  { name: "Violeta Neón", hex: "#A64BFF", cat: "Neón" },
-  { name: "Gris 900", hex: "#111214", cat: "Monocromáticos" },
-  { name: "Gris 600", hex: "#5B5F66", cat: "Monocromáticos" },
-  { name: "Gris 300", hex: "#C6C9CE", cat: "Monocromáticos" },
-  { name: "Gris 100", hex: "#F1F2F3", cat: "Monocromáticos" },
-];
-
 const CURATED_PALETTES = [
   { name: "Brisa Suave", type: "analogo", cat: "Pasteles", base: "#8B7CF0", count: 3 },
   { name: "Océano Profundo", type: "monocromatico", cat: "Oscuros", base: "#1E4E8C", count: 3 },
@@ -155,6 +135,8 @@ const HARMONY_OPTIONS = [
   { id: "analogo", label: "Análogo", icon: "◭" },
   { id: "triadico", label: "Triádico", icon: "▲" },
   { id: "tetradico", label: "Tetrádico", icon: "◆" },
+  { id: "dividido", label: "Dividido", icon: "◬" },
+  { id: "compuesto", label: "Compuesto", icon: "▰" },
   { id: "monocromatico", label: "Monocromático", icon: "●" },
 ];
 
@@ -212,7 +194,7 @@ function PaletteMockupCard({ name, colors, onClick, meta }) {
 }
 
 /* Tarjeta de muestra individual dentro de la Zona de pruebas */
-function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy }) {
+function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy, locked, onToggleLock }) {
   const sampleBg = sampleDark ? "#141419" : "#FFFFFF";
   const sampleFg = sampleDark ? "#F2F2F5" : "#141419";
   const textOnColor = bestTextColor(color);
@@ -225,7 +207,16 @@ function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy }) {
       className="rounded-md overflow-hidden border flex flex-col"
       style={{ borderColor: sampleDark ? "#2A2A33" : "#E4E4E8", background: sampleBg }}
     >
-      <div className="h-16" style={{ background: color }} />
+      <div className="h-16 relative" style={{ background: color }}>
+        <button
+          onClick={onToggleLock}
+          className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+          style={{ background: "rgba(0,0,0,0.35)", color: "#fff" }}
+          title={locked ? "Desbloquear color" : "Bloquear color (no cambia al regenerar)"}
+        >
+          {locked ? "🔒" : "🔓"}
+        </button>
+      </div>
       <div className="p-2.5 flex flex-col gap-1.5" style={{ color: sampleFg }}>
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase tracking-wide opacity-60">{role}</span>
@@ -252,6 +243,58 @@ function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy }) {
         <div className="flex gap-1.5 flex-wrap pt-0.5">
           <ContrastBadge ratio={ratioOnSample} />
           <ContrastBadge ratio={ratioTextOnColor} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Mockup de interfaz completa: navbar + card de producto + botón, todo
+   junto, para ver la paleta aplicada a un layout real. */
+function InterfaceMockup({ colors, sampleDark }) {
+  const pick = (i) => colors[i % colors.length];
+  const navBg = pick(0);
+  const accent = pick(colors.length > 2 ? 2 : 1);
+  const cardBg = sampleDark ? "#1B1B22" : "#FFFFFF";
+  const pageBg = sampleDark ? "#141419" : "#F4F4F2";
+  const pageFg = sampleDark ? "#F2F2F5" : "#16161A";
+  const pageMuted = sampleDark ? "#9A9AA5" : "#6B6B72";
+
+  return (
+    <div className="rounded-lg overflow-hidden border" style={{ borderColor: sampleDark ? "#2A2A33" : "#E4E4E8" }}>
+      <div className="flex items-center justify-between px-3 py-2.5" style={{ background: navBg }}>
+        <span className="text-sm font-semibold" style={{ color: bestTextColor(navBg) }}>
+          Marca
+        </span>
+        <div className="flex gap-1.5">
+          {colors.slice(0, 3).map((c, i) => (
+            <span key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
+          ))}
+        </div>
+      </div>
+
+      <div className="p-4" style={{ background: pageBg }}>
+        <p className="text-[15px] font-semibold mb-1" style={{ color: pageFg }}>
+          Título de producto
+        </p>
+        <p className="text-xs mb-3" style={{ color: pageMuted }}>
+          Una descripción corta de ejemplo para ver el contraste sobre el fondo.
+        </p>
+
+        <div className="rounded-md p-3 mb-3" style={{ background: cardBg, border: `1px solid ${sampleDark ? "#2A2A33" : "#E4E4E8"}` }}>
+          <p className="text-xs font-medium mb-1" style={{ color: pageFg }}>
+            Tarjeta
+          </p>
+          <p className="text-[11px] mb-2" style={{ color: pageMuted }}>
+            Contenido con un{" "}
+            <span style={{ color: accent, fontWeight: 600 }}>link de acento</span>.
+          </p>
+          <button
+            className="text-xs px-3 py-1.5 rounded-md font-medium"
+            style={{ background: accent, color: bestTextColor(accent) }}
+          >
+            Acción
+          </button>
         </div>
       </div>
     </div>
@@ -306,12 +349,53 @@ export default function Prisma() {
   const [count, setCount] = useState(4);
   const [baseColor, setBaseColor] = useState("#2B6CFF");
   const [palette, setPalette] = useState(() => generateHarmony("#2B6CFF", "analogo", 4));
+  const [lockedIndices, setLockedIndices] = useState(() => new Set());
+  const [sampleView, setSampleView] = useState("tarjetas"); // tarjetas | interfaz
+  const [exportOpen, setExportOpen] = useState(false);
 
-  const [savedPalettes, setSavedPalettes] = useState([]);
   const [saveName, setSaveName] = useState("");
   const [savedSearch, setSavedSearch] = useState("");
 
   const { copiedKey, copy } = useCopy();
+
+  const { user, authLoading, signInWithGoogle, signOutUser } = useAuth();
+  const {
+    palettes: savedPalettes,
+    loading: savedLoading,
+    savePalette: savePaletteRemote,
+    removePalette: removePaletteRemote,
+    toggleFavPalette: toggleFavRemote,
+  } = useUserPalettes(user?.uid);
+
+  const [loginModal, setLoginModal] = useState(null); // null | "welcome" | "action"
+  const [loginError, setLoginError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [welcomeSeen, setWelcomeSeen] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user && !welcomeSeen) {
+      setLoginModal("welcome");
+      setWelcomeSeen(true);
+    }
+  }, [authLoading, user, welcomeSeen]);
+
+  const requireLogin = () => {
+    setLoginError("");
+    setLoginModal("action");
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoginBusy(true);
+    setLoginError("");
+    try {
+      await signInWithGoogle();
+      setLoginModal(null);
+    } catch (e) {
+      setLoginError("No se pudo iniciar sesión. Intenta de nuevo.");
+    } finally {
+      setLoginBusy(false);
+    }
+  };
 
   const ui = uiDark
     ? { bg: "#0A0A0F", panel: "#15151B", panel2: "#1B1B22", border: "#26262E", text: "#F2F2F5", muted: "#9A9AA5" }
@@ -320,18 +404,33 @@ export default function Prisma() {
   const toggleRole = (role) =>
     setActiveRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
 
+  const { colors: colorLibrary } = useColorLibrary();
+
   const filteredColors = useMemo(() => {
-    return COLOR_LIBRARY.filter((c) => {
+    return colorLibrary.filter((c) => {
       const matchCat = activeCategory === "Todas" || c.cat === activeCategory;
       const q = search.trim().toLowerCase();
       const matchSearch = !q || c.name.toLowerCase().includes(q) || c.hex.toLowerCase().includes(q.replace("#", ""));
       return matchCat && matchSearch;
     });
-  }, [search, activeCategory]);
+  }, [colorLibrary, search, activeCategory]);
+
+  const toggleLock = (i) => {
+    setLockedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
 
   const regenerate = useCallback(
-    (type = harmonyType, c = count, base = baseColor) => setPalette(generateHarmony(base, type, c)),
-    [harmonyType, count, baseColor]
+    (type = harmonyType, c = count, base = baseColor) => {
+      const fresh = generateHarmony(base, type, c);
+      setPalette((prev) => fresh.map((col, i) => (lockedIndices.has(i) ? prev[i] ?? col : col)));
+      if (c < count) setLockedIndices((prev) => new Set([...prev].filter((i) => i < c)));
+    },
+    [harmonyType, count, baseColor, lockedIndices]
   );
 
   const handleFullRandom = () => {
@@ -340,7 +439,8 @@ export default function Prisma() {
     const newType = types[Math.floor(Math.random() * types.length)];
     setBaseColor(newBase);
     setHarmonyType(newType);
-    setPalette(generateHarmony(newBase, newType, count));
+    const fresh = generateHarmony(newBase, newType, count);
+    setPalette((prev) => fresh.map((col, i) => (lockedIndices.has(i) ? prev[i] ?? col : col)));
   };
 
   const loadCurated = (p) => {
@@ -352,13 +452,22 @@ export default function Prisma() {
   };
 
   const savePalette = () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
     const name = saveName.trim() || `Paleta ${savedPalettes.length + 1}`;
-    setSavedPalettes((prev) => [{ name, colors: palette, date: "Ahora", fav: false }, ...prev]);
+    savePaletteRemote(user.uid, { name, colors: palette }).catch(() => {});
     setSaveName("");
   };
-  const removeSaved = (idx) => setSavedPalettes((prev) => prev.filter((_, i) => i !== idx));
-  const toggleFav = (idx) =>
-    setSavedPalettes((prev) => prev.map((p, i) => (i === idx ? { ...p, fav: !p.fav } : p)));
+  const removeSaved = (id) => {
+    if (!user) return;
+    removePaletteRemote(user.uid, id).catch(() => {});
+  };
+  const toggleFav = (id, fav) => {
+    if (!user) return;
+    toggleFavRemote(user.uid, id, fav).catch(() => {});
+  };
 
   const filteredSaved = savedPalettes.filter((p) =>
     p.name.toLowerCase().includes(savedSearch.trim().toLowerCase())
@@ -385,13 +494,37 @@ export default function Prisma() {
             <LogoMark size={24} />
             <span className="text-base font-semibold tracking-wide">PRISMA</span>
           </div>
-          <button
-            onClick={() => setUiDark((v) => !v)}
-            className="w-8 h-8 rounded-full border flex items-center justify-center"
-            style={{ borderColor: ui.border, color: ui.muted }}
-          >
-            {uiDark ? "☀" : "●"}
-          </button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <button
+                onClick={signOutUser}
+                className="w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center"
+                style={{ borderColor: ui.border }}
+                title={`Cerrar sesión (${user.displayName || user.email || ""})`}
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs">{(user.displayName || "?")[0]}</span>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={requireLogin}
+                className="text-[11px] px-2.5 py-1.5 rounded-full border"
+                style={{ borderColor: ui.border, color: ui.muted }}
+              >
+                Iniciar sesión
+              </button>
+            )}
+            <button
+              onClick={() => setUiDark((v) => !v)}
+              className="w-8 h-8 rounded-full border flex items-center justify-center"
+              style={{ borderColor: ui.border, color: ui.muted }}
+            >
+              {uiDark ? "☀" : "●"}
+            </button>
+          </div>
         </header>
 
         <main className="px-4">
@@ -604,7 +737,7 @@ export default function Prisma() {
                 <span className="text-sm font-medium w-4 text-center">{count}</span>
                 <button
                   onClick={() => {
-                    const n = Math.min(6, count + 1);
+                    const n = Math.min(10, count + 1);
                     setCount(n);
                     regenerate(harmonyType, n, baseColor);
                   }}
@@ -615,18 +748,46 @@ export default function Prisma() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5 mb-4">
-                {palette.map((c, i) => (
-                  <ColorSampleCard
-                    key={i}
-                    color={c}
-                    role={roleFor(i)}
-                    sampleDark={sampleDark}
-                    copiedKey={copiedKey}
-                    onCopy={copy}
-                  />
+              <div className="flex gap-1.5 mb-3">
+                {[
+                  { id: "tarjetas", label: "Tarjetas" },
+                  { id: "interfaz", label: "Interfaz" },
+                ].map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setSampleView(v.id)}
+                    className="text-xs px-3 py-1.5 rounded-full border"
+                    style={{
+                      borderColor: sampleView === v.id ? "#8B5CF6" : ui.border,
+                      background: sampleView === v.id ? "#8B5CF622" : "transparent",
+                      color: sampleView === v.id ? "#8B5CF6" : ui.muted,
+                    }}
+                  >
+                    {v.label}
+                  </button>
                 ))}
               </div>
+
+              {sampleView === "tarjetas" ? (
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                  {palette.map((c, i) => (
+                    <ColorSampleCard
+                      key={i}
+                      color={c}
+                      role={roleFor(i)}
+                      sampleDark={sampleDark}
+                      copiedKey={copiedKey}
+                      onCopy={copy}
+                      locked={lockedIndices.has(i)}
+                      onToggleLock={() => toggleLock(i)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <InterfaceMockup colors={palette} sampleDark={sampleDark} />
+                </div>
+              )}
 
               <div className="flex gap-2 mb-3">
                 <button
@@ -635,6 +796,13 @@ export default function Prisma() {
                   style={{ borderColor: ui.border, color: ui.text, background: ui.panel }}
                 >
                   🎲 Aleatoria
+                </button>
+                <button
+                  onClick={() => setExportOpen(true)}
+                  className="flex-1 text-xs px-3 py-2.5 rounded-md border font-medium"
+                  style={{ borderColor: ui.border, color: ui.text, background: ui.panel }}
+                >
+                  ⇩ Exportar
                 </button>
                 <button
                   onClick={savePalette}
@@ -669,16 +837,32 @@ export default function Prisma() {
                 style={{ background: ui.panel, borderColor: ui.border, color: ui.text }}
               />
 
-              {filteredSaved.length === 0 ? (
+              {!user ? (
+                <div className="rounded-lg border p-4 text-center" style={{ borderColor: ui.border, background: ui.panel }}>
+                  <p className="text-sm mb-3" style={{ color: ui.muted }}>
+                    Inicia sesión para guardar paletas y verlas aquí, en cualquier dispositivo.
+                  </p>
+                  <button
+                    onClick={requireLogin}
+                    className="text-xs px-3 py-2 rounded-md font-medium"
+                    style={{ background: "#8B5CF6", color: "#fff" }}
+                  >
+                    Iniciar sesión con Google
+                  </button>
+                </div>
+              ) : savedLoading ? (
                 <p className="text-xs" style={{ color: ui.muted }}>
-                  Aún no guardaste ninguna paleta. Ve a "Zona de pruebas" para crear y guardar una. Por
-                  ahora se guardan en esta sesión — la próxima versión las conecta a Firebase.
+                  Cargando tus paletas…
+                </p>
+              ) : filteredSaved.length === 0 ? (
+                <p className="text-xs" style={{ color: ui.muted }}>
+                  Aún no guardaste ninguna paleta. Ve a "Zona de pruebas" para crear y guardar una.
                 </p>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {filteredSaved.map((sp, idx) => (
+                  {filteredSaved.map((sp) => (
                     <div
-                      key={idx}
+                      key={sp.id}
                       className="flex items-center gap-3 rounded-lg border p-2.5"
                       style={{ borderColor: ui.border, background: ui.panel }}
                     >
@@ -690,10 +874,10 @@ export default function Prisma() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{sp.name}</p>
                         <p className="text-[11px]" style={{ color: ui.muted }}>
-                          {sp.colors.length} colores · {sp.date}
+                          {sp.colors.length} colores
                         </p>
                       </div>
-                      <button onClick={() => toggleFav(idx)} className="text-lg leading-none">
+                      <button onClick={() => toggleFav(sp.id, sp.fav)} className="text-lg leading-none">
                         {sp.fav ? "♥" : "♡"}
                       </button>
                       <button
@@ -707,7 +891,7 @@ export default function Prisma() {
                         Cargar
                       </button>
                       <button
-                        onClick={() => removeSaved(idx)}
+                        onClick={() => removeSaved(sp.id)}
                         className="text-[11px] px-2 py-1 rounded border"
                         style={{ borderColor: "#D6454555", color: "#D64545" }}
                       >
@@ -755,6 +939,19 @@ export default function Prisma() {
             );
           })}
         </nav>
+
+        {loginModal && (
+          <LoginModal
+            ui={ui}
+            reason={loginModal}
+            busy={loginBusy}
+            error={loginError}
+            onGoogle={handleGoogleLogin}
+            onDismiss={() => setLoginModal(null)}
+          />
+        )}
+
+        {exportOpen && <ExportModal ui={ui} colors={palette} onClose={() => setExportOpen(false)} />}
       </div>
     </div>
   );
