@@ -95,12 +95,24 @@ function generateHarmony(baseHex, type, count) {
   const { h, s, l } = hexToHsl(baseHex);
   if (type === "monocromatico") {
     const satM = Math.max(s, 35);
-    const MIN_L = 8, MAX_L = 94, STEP = 8;
-    const candidates = new Set([Math.round(l)]);
-    for (let v = MIN_L; v <= MAX_L; v += STEP) candidates.add(v);
-    const closest = [...candidates].sort((a, b) => Math.abs(a - l) - Math.abs(b - l));
-    const picked = closest.slice(0, count).sort((a, b) => b - a);
-    return picked.map((ll) => hslToHex(h, satM, ll));
+    if (count === 1) return [hslToHex(h, satM, l)];
+    // Escala completa (clara -> oscura) con espaciado amplio, desplazada para
+    // que uno de sus escalones caiga exactamente en la luminosidad del color base.
+    const LMAX = 92, LMIN = 14;
+    const step = (LMAX - LMIN) / (count - 1);
+    const positions = Array.from({ length: count }, (_, i) => LMAX - i * step);
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    positions.forEach((p, i) => {
+      const d = Math.abs(p - l);
+      if (d < closestDist) {
+        closestDist = d;
+        closestIdx = i;
+      }
+    });
+    const delta = l - positions[closestIdx];
+    const shifted = positions.map((p) => Math.min(97, Math.max(4, p + delta)));
+    return shifted.map((ll) => hslToHex(h, satM, ll));
   }
   if (type === "aleatorio") {
     return Array.from({ length: count }, () =>
