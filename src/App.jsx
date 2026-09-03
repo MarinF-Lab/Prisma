@@ -94,8 +94,13 @@ const HARMONIES = {
 function generateHarmony(baseHex, type, count) {
   const { h, s, l } = hexToHsl(baseHex);
   if (type === "monocromatico") {
-    const lights = [92, 82, 72, 62, 52, 44, 36, 28, 20, 12].slice(0, count);
-    return lights.map((ll) => hslToHex(h, Math.max(s, 35), ll));
+    const satM = Math.max(s, 35);
+    const MIN_L = 8, MAX_L = 94, STEP = 8;
+    const candidates = new Set([Math.round(l)]);
+    for (let v = MIN_L; v <= MAX_L; v += STEP) candidates.add(v);
+    const closest = [...candidates].sort((a, b) => Math.abs(a - l) - Math.abs(b - l));
+    const picked = closest.slice(0, count).sort((a, b) => b - a);
+    return picked.map((ll) => hslToHex(h, satM, ll));
   }
   if (type === "aleatorio") {
     return Array.from({ length: count }, () =>
@@ -300,7 +305,7 @@ function InterfaceMockup({ colors, sampleDark }) {
           ))}
         </div>
 
-        <div className="rounded-md p-3" style={{ background: cardBg, border: `1px solid ${borderColor}` }}>
+        <div className="rounded-md p-3 mb-3" style={{ background: cardBg, border: `1px solid ${borderColor}` }}>
           <p className="text-xs font-medium mb-1" style={{ color: pageFg }}>
             Tarjeta
           </p>
@@ -308,6 +313,27 @@ function InterfaceMockup({ colors, sampleDark }) {
             Contenido con un{" "}
             <span style={{ color: linkAccent, fontWeight: 600 }}>link de acento</span>.
           </p>
+        </div>
+
+        <div className="rounded-md p-3" style={{ background: cardBg, border: `1px solid ${borderColor}` }}>
+          <p className="text-xs font-medium mb-3" style={{ color: pageFg }}>
+            Gráfico de ejemplo
+          </p>
+          <div className="flex items-end gap-1.5" style={{ height: 64 }}>
+            {colors.map((c, i) => {
+              const heightPattern = [55, 85, 40, 70, 95, 60, 80, 45, 65, 90];
+              const h = heightPattern[i % heightPattern.length];
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                  <div
+                    className="w-full rounded-sm"
+                    style={{ height: `${h}%`, background: c }}
+                    title={c}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -363,7 +389,7 @@ export default function Prisma() {
   const [baseColor, setBaseColor] = useState("#2B6CFF");
   const [palette, setPalette] = useState(() => generateHarmony("#2B6CFF", "analogo", 4));
   const [lockedIndices, setLockedIndices] = useState(() => new Set());
-  const [sampleView, setSampleView] = useState("tarjetas"); // tarjetas | interfaz
+  const [sampleView, setSampleView] = useState("interfaz"); // interfaz | tarjetas
   const [exportOpen, setExportOpen] = useState(false);
 
   const [saveName, setSaveName] = useState("");
@@ -590,7 +616,10 @@ export default function Prisma() {
                   Paletas destacadas
                 </h2>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+              <div
+                className="grid grid-rows-3 grid-flow-col auto-cols-max gap-3 overflow-x-auto pb-2"
+                style={{ scrollbarWidth: "none" }}
+              >
                 {CURATED_PALETTES.map((p) => (
                   <PaletteMockupCard
                     key={p.name}
@@ -755,8 +784,8 @@ export default function Prisma() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex gap-1.5">
                   {[
-                    { id: "tarjetas", label: "Tarjetas" },
                     { id: "interfaz", label: "Interfaz" },
+                    { id: "tarjetas", label: "Tarjetas" },
                   ].map((v) => (
                     <button
                       key={v.id}
