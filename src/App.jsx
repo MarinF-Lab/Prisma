@@ -252,22 +252,23 @@ function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy, locked, o
 /* Mockup de interfaz completa: navbar + card de producto + botón, todo
    junto, para ver la paleta aplicada a un layout real. */
 function InterfaceMockup({ colors, sampleDark }) {
-  const pick = (i) => colors[i % colors.length];
-  const navBg = pick(0);
-  const accent = pick(colors.length > 2 ? 2 : 1);
+  const navBg = colors[0];
+  const heroAccent = colors[Math.min(1, colors.length - 1)];
+  const linkAccent = colors[colors.length - 1];
   const cardBg = sampleDark ? "#1B1B22" : "#FFFFFF";
   const pageBg = sampleDark ? "#141419" : "#F4F4F2";
   const pageFg = sampleDark ? "#F2F2F5" : "#16161A";
   const pageMuted = sampleDark ? "#9A9AA5" : "#6B6B72";
+  const borderColor = sampleDark ? "#2A2A33" : "#E4E4E8";
 
   return (
-    <div className="rounded-lg overflow-hidden border" style={{ borderColor: sampleDark ? "#2A2A33" : "#E4E4E8" }}>
+    <div className="rounded-lg overflow-hidden border" style={{ borderColor }}>
       <div className="flex items-center justify-between px-3 py-2.5" style={{ background: navBg }}>
         <span className="text-sm font-semibold" style={{ color: bestTextColor(navBg) }}>
           Marca
         </span>
         <div className="flex gap-1.5">
-          {colors.slice(0, 3).map((c, i) => (
+          {colors.map((c, i) => (
             <span key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
           ))}
         </div>
@@ -280,21 +281,33 @@ function InterfaceMockup({ colors, sampleDark }) {
         <p className="text-xs mb-3" style={{ color: pageMuted }}>
           Una descripción corta de ejemplo para ver el contraste sobre el fondo.
         </p>
+        <button
+          className="text-xs px-3 py-1.5 rounded-md font-medium mb-3"
+          style={{ background: heroAccent, color: bestTextColor(heroAccent) }}
+        >
+          Acción principal
+        </button>
 
-        <div className="rounded-md p-3 mb-3" style={{ background: cardBg, border: `1px solid ${sampleDark ? "#2A2A33" : "#E4E4E8"}` }}>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {colors.map((c, i) => (
+            <span
+              key={i}
+              className="text-[10px] px-2 py-1 rounded-full font-medium"
+              style={{ background: c, color: bestTextColor(c) }}
+            >
+              Etiqueta {i + 1}
+            </span>
+          ))}
+        </div>
+
+        <div className="rounded-md p-3" style={{ background: cardBg, border: `1px solid ${borderColor}` }}>
           <p className="text-xs font-medium mb-1" style={{ color: pageFg }}>
             Tarjeta
           </p>
-          <p className="text-[11px] mb-2" style={{ color: pageMuted }}>
+          <p className="text-[11px]" style={{ color: pageMuted }}>
             Contenido con un{" "}
-            <span style={{ color: accent, fontWeight: 600 }}>link de acento</span>.
+            <span style={{ color: linkAccent, fontWeight: 600 }}>link de acento</span>.
           </p>
-          <button
-            className="text-xs px-3 py-1.5 rounded-md font-medium"
-            style={{ background: accent, color: bestTextColor(accent) }}
-          >
-            Acción
-          </button>
         </div>
       </div>
     </div>
