@@ -1,4 +1,7 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useAuth } from "./useAuth.js";
+import { useUserPalettes } from "./useUserPalettes.js";
+import { LoginModal } from "./LoginModal.jsx";
 
 /* ============================================================
    PRISMA — Muestrario y generador de combinaciones de color
@@ -307,11 +310,49 @@ export default function Prisma() {
   const [baseColor, setBaseColor] = useState("#2B6CFF");
   const [palette, setPalette] = useState(() => generateHarmony("#2B6CFF", "analogo", 4));
 
-  const [savedPalettes, setSavedPalettes] = useState([]);
   const [saveName, setSaveName] = useState("");
   const [savedSearch, setSavedSearch] = useState("");
 
   const { copiedKey, copy } = useCopy();
+
+  const { user, authLoading, signInWithGoogle, signOutUser } = useAuth();
+  const {
+    palettes: savedPalettes,
+    loading: savedLoading,
+    savePalette: savePaletteRemote,
+    removePalette: removePaletteRemote,
+    toggleFavPalette: toggleFavRemote,
+  } = useUserPalettes(user?.uid);
+
+  const [loginModal, setLoginModal] = useState(null); // null | "welcome" | "action"
+  const [loginError, setLoginError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [welcomeSeen, setWelcomeSeen] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user && !welcomeSeen) {
+      setLoginModal("welcome");
+      setWelcomeSeen(true);
+    }
+  }, [authLoading, user, welcomeSeen]);
+
+  const requireLogin = () => {
+    setLoginError("");
+    setLoginModal("action");
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoginBusy(true);
+    setLoginError("");
+    try {
+      await signInWithGoogle();
+      setLoginModal(null);
+    } catch (e) {
+      setLoginError("No se pudo iniciar sesión. Intenta de nuevo.");
+    } finally {
+      setLoginBusy(false);
+    }
+  };
 
   const ui = uiDark
     ? { bg: "#0A0A0F", panel: "#15151B", panel2: "#1B1B22", border: "#26262E", text: "#F2F2F5", muted: "#9A9AA5" }
@@ -352,13 +393,22 @@ export default function Prisma() {
   };
 
   const savePalette = () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
     const name = saveName.trim() || `Paleta ${savedPalettes.length + 1}`;
-    setSavedPalettes((prev) => [{ name, colors: palette, date: "Ahora", fav: false }, ...prev]);
+    savePaletteRemote(user.uid, { name, colors: palette }).catch(() => {});
     setSaveName("");
   };
-  const removeSaved = (idx) => setSavedPalettes((prev) => prev.filter((_, i) => i !== idx));
-  const toggleFav = (idx) =>
-    setSavedPalettes((prev) => prev.map((p, i) => (i === idx ? { ...p, fav: !p.fav } : p)));
+  const removeSaved = (id) => {
+    if (!user) return;
+    removePaletteRemote(user.uid, id).catch(() => {});
+  };
+  const toggleFav = (id, fav) => {
+    if (!user) return;
+    toggleFavRemote(user.uid, id, fav).catch(() => {});
+  };
 
   const filteredSaved = savedPalettes.filter((p) =>
     p.name.toLowerCase().includes(savedSearch.trim().toLowerCase())
@@ -385,13 +435,37 @@ export default function Prisma() {
             <LogoMark size={24} />
             <span className="text-base font-semibold tracking-wide">PRISMA</span>
           </div>
-          <button
-            onClick={() => setUiDark((v) => !v)}
-            className="w-8 h-8 rounded-full border flex items-center justify-center"
-            style={{ borderColor: ui.border, color: ui.muted }}
-          >
-            {uiDark ? "☀" : "●"}
-          </button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <button
+                onClick={signOutUser}
+                className="w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center"
+                style={{ borderColor: ui.border }}
+                title={`Cerrar sesión (${user.displayName || user.email || ""})`}
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs">{(user.displayName || "?")[0]}</span>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={requireLogin}
+                className="text-[11px] px-2.5 py-1.5 rounded-full border"
+                style={{ borderColor: ui.border, color: ui.muted }}
+              >
+                Iniciar sesión
+              </button>
+            )}
+            <button
+              onClick={() => setUiDark((v) => !v)}
+              className="w-8 h-8 rounded-full border flex items-center justify-center"
+              style={{ borderColor: ui.border, color: ui.muted }}
+            >
+              {uiDark ? "☀" : "●"}
+            </button>
+          </div>
         </header>
 
         <main className="px-4">
@@ -669,16 +743,32 @@ export default function Prisma() {
                 style={{ background: ui.panel, borderColor: ui.border, color: ui.text }}
               />
 
-              {filteredSaved.length === 0 ? (
+              {!user ? (
+                <div className="rounded-lg border p-4 text-center" style={{ borderColor: ui.border, background: ui.panel }}>
+                  <p className="text-sm mb-3" style={{ color: ui.muted }}>
+                    Inicia sesión para guardar paletas y verlas aquí, en cualquier dispositivo.
+                  </p>
+                  <button
+                    onClick={requireLogin}
+                    className="text-xs px-3 py-2 rounded-md font-medium"
+                    style={{ background: "#8B5CF6", color: "#fff" }}
+                  >
+                    Iniciar sesión con Google
+                  </button>
+                </div>
+              ) : savedLoading ? (
                 <p className="text-xs" style={{ color: ui.muted }}>
-                  Aún no guardaste ninguna paleta. Ve a "Zona de pruebas" para crear y guardar una. Por
-                  ahora se guardan en esta sesión — la próxima versión las conecta a Firebase.
+                  Cargando tus paletas…
+                </p>
+              ) : filteredSaved.length === 0 ? (
+                <p className="text-xs" style={{ color: ui.muted }}>
+                  Aún no guardaste ninguna paleta. Ve a "Zona de pruebas" para crear y guardar una.
                 </p>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {filteredSaved.map((sp, idx) => (
+                  {filteredSaved.map((sp) => (
                     <div
-                      key={idx}
+                      key={sp.id}
                       className="flex items-center gap-3 rounded-lg border p-2.5"
                       style={{ borderColor: ui.border, background: ui.panel }}
                     >
@@ -690,10 +780,10 @@ export default function Prisma() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{sp.name}</p>
                         <p className="text-[11px]" style={{ color: ui.muted }}>
-                          {sp.colors.length} colores · {sp.date}
+                          {sp.colors.length} colores
                         </p>
                       </div>
-                      <button onClick={() => toggleFav(idx)} className="text-lg leading-none">
+                      <button onClick={() => toggleFav(sp.id, sp.fav)} className="text-lg leading-none">
                         {sp.fav ? "♥" : "♡"}
                       </button>
                       <button
@@ -707,7 +797,7 @@ export default function Prisma() {
                         Cargar
                       </button>
                       <button
-                        onClick={() => removeSaved(idx)}
+                        onClick={() => removeSaved(sp.id)}
                         className="text-[11px] px-2 py-1 rounded border"
                         style={{ borderColor: "#D6454555", color: "#D64545" }}
                       >
@@ -755,6 +845,17 @@ export default function Prisma() {
             );
           })}
         </nav>
+
+        {loginModal && (
+          <LoginModal
+            ui={ui}
+            reason={loginModal}
+            busy={loginBusy}
+            error={loginError}
+            onGoogle={handleGoogleLogin}
+            onDismiss={() => setLoginModal(null)}
+          />
+        )}
       </div>
     </div>
   );
