@@ -678,20 +678,11 @@ export default function Prisma() {
           {/* ================= ZONA DE PRUEBAS ================= */}
           {screen === "pruebas" && (
             <>
-              <div className="flex items-center justify-between mt-1 mb-3">
-                <div>
-                  <h1 className="text-lg font-semibold">Zona de pruebas</h1>
-                  <p className="text-xs" style={{ color: ui.muted }}>
-                    Crea y prueba combinaciones
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSampleDark((v) => !v)}
-                  className="text-[11px] px-2.5 py-1.5 rounded-full border flex items-center gap-1"
-                  style={{ borderColor: ui.border, color: ui.muted }}
-                >
-                  {sampleDark ? "● Muestra oscura" : "☀ Muestra clara"}
-                </button>
+              <div className="mt-1 mb-3">
+                <h1 className="text-lg font-semibold">Zona de pruebas</h1>
+                <p className="text-xs" style={{ color: ui.muted }}>
+                  Crea y prueba combinaciones
+                </p>
               </div>
 
               <div className="flex gap-2 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
@@ -761,24 +752,33 @@ export default function Prisma() {
                 </button>
               </div>
 
-              <div className="flex gap-1.5 mb-3">
-                {[
-                  { id: "tarjetas", label: "Tarjetas" },
-                  { id: "interfaz", label: "Interfaz" },
-                ].map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setSampleView(v.id)}
-                    className="text-xs px-3 py-1.5 rounded-full border"
-                    style={{
-                      borderColor: sampleView === v.id ? "#8B5CF6" : ui.border,
-                      background: sampleView === v.id ? "#8B5CF622" : "transparent",
-                      color: sampleView === v.id ? "#8B5CF6" : ui.muted,
-                    }}
-                  >
-                    {v.label}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex gap-1.5">
+                  {[
+                    { id: "tarjetas", label: "Tarjetas" },
+                    { id: "interfaz", label: "Interfaz" },
+                  ].map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setSampleView(v.id)}
+                      className="text-xs px-3 py-1.5 rounded-full border"
+                      style={{
+                        borderColor: sampleView === v.id ? "#8B5CF6" : ui.border,
+                        background: sampleView === v.id ? "#8B5CF622" : "transparent",
+                        color: sampleView === v.id ? "#8B5CF6" : ui.muted,
+                      }}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setSampleDark((v) => !v)}
+                  className="text-[11px] px-2.5 py-1.5 rounded-full border flex items-center gap-1"
+                  style={{ borderColor: ui.border, color: ui.muted }}
+                >
+                  {sampleDark ? "● Muestra oscura" : "☀ Muestra clara"}
+                </button>
               </div>
 
               {sampleView === "tarjetas" ? (
