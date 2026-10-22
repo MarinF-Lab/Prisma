@@ -1,0 +1,1209 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Laboratorio de Muestras</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;1,500&family=Sora:wght@500;700&family=Lora:ital,wght@0,400;1,400&display=swap">
+<style>
+  /* Layout: riel de controles fijo a la izquierda (sticky en escritorio) + lienzo de
+     muestra en vivo a la derecha, enmarcado al ancho de viewport elegido. */
+  :root {
+    --bg: #FAFAF8;
+    --panel: #FFFFFF;
+    --panel2: #F2F2EF;
+    --border: #E6E6E2;
+    --text: #16161A;
+    --muted: #6B6B72;
+    --accent: #8B5CF6;
+    --accent-soft: rgba(139, 92, 246, .14);
+    --good: #2E9E5B;
+    --bad: #D64545;
+    --good-soft: rgba(60, 200, 120, .16);
+    --bad-soft: rgba(230, 70, 70, .16);
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0A0A0F; --panel: #15151B; --panel2: #1B1B22; --border: #26262E;
+      --text: #F2F2F5; --muted: #9A9AA5; --accent-soft: rgba(139, 92, 246, .22);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0A0A0F; --panel: #15151B; --panel2: #1B1B22; --border: #26262E;
+    --text: #F2F2F5; --muted: #9A9AA5; --accent-soft: rgba(139, 92, 246, .22);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 40px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  header.page { margin-bottom: 22px; }
+  header.page .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 6px;
+  }
+  header.page h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; text-wrap: balance; }
+  header.page p { font-size: 13px; color: var(--muted); margin: 0; max-width: 62ch; }
+
+  .layout { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+  @media (min-width: 900px) {
+    .layout { grid-template-columns: 320px 1fr; }
+    .rail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+  }
+
+  .rail { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; min-width: 0;
+  }
+  .card h2 {
+    font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 10px;
+  }
+
+  /* Paleta */
+  .demo-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .demo-chip {
+    flex: 1 1 auto; min-width: 64px; border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px; background: var(--panel2); cursor: pointer; text-align: left;
+    font: inherit; color: var(--text);
+  }
+  .demo-chip.active { border-color: var(--accent); background: var(--accent-soft); }
+  .demo-chip .sw { display: flex; height: 16px; border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+  .demo-chip .sw span { flex: 1; }
+  .demo-chip .name { font-size: 10px; font-weight: 600; }
+
+  .hex-input {
+    width: 100%; font: 11px/1.4 ui-monospace, "SFMono-Regular", Menlo, monospace;
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 8px; resize: vertical; min-height: 54px;
+  }
+  .hex-apply {
+    margin-top: 6px; width: 100%; font-size: 11px; font-weight: 600; padding: 7px;
+    border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .hex-error { font-size: 10px; color: var(--bad); margin-top: 4px; min-height: 12px; }
+
+  /* Componentes (checklist) */
+  .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .check-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .check-row input { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* Roles */
+  .role-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .role-row:last-child { margin-bottom: 0; }
+  .role-sw { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; border: 1px solid var(--border); }
+  .role-select {
+    flex: 1; min-width: 0; font-size: 11px; padding: 5px 6px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+  }
+
+  /* Segmentados */
+  .seg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .seg button {
+    font-size: 11px; font-weight: 500; padding: 6px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .seg button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+  .switch-row { display: flex; align-items: center; justify-content: space-between; }
+  .switch-row .lbl { font-size: 12px; }
+  .switch {
+    width: 34px; height: 20px; border-radius: 999px; background: var(--border); position: relative;
+    border: none; cursor: pointer; flex-shrink: 0;
+  }
+  .switch.on { background: var(--accent); }
+  .switch .knob {
+    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; transition: transform .15s ease;
+  }
+  .switch.on .knob { transform: translateX(14px); }
+
+  /* Lienzo de muestra */
+  .canvas-shell { min-width: 0; }
+  .viewport-label {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+    color: var(--muted); background: var(--panel); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 999px; margin-bottom: 10px;
+  }
+  .viewport-label .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .canvas-frame {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; display: flex; justify-content: center; overflow-x: auto;
+  }
+  .sample-root {
+    width: 100%; margin: 0 auto; overflow: hidden;
+    border: 1px solid; transition: max-width .2s ease;
+  }
+  .sample-inner { padding: var(--s-pad); }
+  .sample-block + .sample-block { margin-top: var(--s-gap); }
+
+  .sample-btn { cursor: pointer; transition: transform .1s ease; }
+  .sample-btn:active { transform: scale(.96); }
+  .sample-row:hover { background: rgba(128, 128, 128, .08); }
+  .sample-input { font: inherit; outline: none; transition: border-color .12s ease; }
+  .sample-input:focus { border-color: var(--accent) !important; }
+  .sample-switch { cursor: pointer; border: none; padding: 0; transition: background .12s ease; }
+  .sample-switch .knob { transition: transform .15s ease; }
+
+  .a11y-badge {
+    display: inline-block; font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 4px;
+    margin-left: 5px; vertical-align: middle;
+  }
+
+  .s-heading { font-family: var(--font-display, inherit); }
+  .s-body { font-family: var(--font-body, inherit); }
+
+  /* Marco de dispositivo alrededor del lienzo */
+  .device-frame { margin: 0 auto; transition: max-width .2s ease; }
+  .device-frame.navegador {
+    background: #D8D8DC; padding: 0; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+  }
+  .device-frame.navegador .browser-bar { display: flex; gap: 6px; padding: 10px 12px; background: #E8E8EC; }
+  .device-frame.navegador .browser-bar span { width: 10px; height: 10px; border-radius: 50%; display: block; }
+  .device-frame.celular {
+    background: #1A1A1E; padding: 14px 10px 20px; border-radius: 34px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
+  }
+  .device-frame.celular .notch {
+    width: 64px; height: 16px; background: #1A1A1E; border-radius: 0 0 10px 10px;
+    margin: 0 auto 8px; position: relative;
+  }
+  .device-frame.celular .notch::after {
+    content: ""; position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+    width: 30px; height: 4px; border-radius: 2px; background: #000;
+  }
+
+  /* Edición al estilo Canva: click sobre un elemento de la muestra abre este panel.
+     Va en flujo normal (sin position:fixed) debajo del lienzo — un panel flotante con
+     coordenadas calculadas a mano puede terminar fuera de la pantalla visible dentro
+     de un visor embebido (iframe con su propio transform/escalado/scroll). */
+  .is-selected { outline: 2px dashed var(--accent); outline-offset: 2px; }
+  .sample-popover {
+    margin-top: 12px; background: var(--panel); border: 1px solid var(--accent);
+    border-radius: 10px; padding: 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, .1);
+    display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+  }
+  .sample-popover .pop-title {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 2px;
+  }
+  .sample-popover .pop-close {
+    font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted);
+    background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .sample-popover button:not(.pop-close) {
+    font-size: 11px; font-weight: 500; padding: 6px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .sample-popover button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+  /* Panel de exportación: mismo criterio que el popover (flujo normal, sin fixed) */
+  .export-panel {
+    margin-top: 12px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+  }
+  .export-panel .pop-title {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  .export-panel .pop-close {
+    font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted);
+    background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .export-block + .export-block { margin-top: 10px; }
+  .export-block .export-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .export-block .export-head span { font-size: 10px; font-weight: 600; color: var(--muted); }
+  .export-copy { width: auto !important; margin-top: 0 !important; padding: 4px 10px !important; }
+  pre.hex-input { margin: 0; white-space: pre; overflow-x: auto; }
+
+  footer.note {
+    margin-top: 22px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">Extensión de Prisma &middot; prototipo</p>
+    <h1>Laboratorio de Muestras</h1>
+    <p>
+      Hoy la Zona de pruebas de Prisma solo deja elegir armonía, cantidad de colores y una vista fija
+      (tarjetas o interfaz). Este laboratorio explora cuánto más se puede personalizar: qué piezas
+      aparecen, qué color cumple qué rol, el estilo de botón, el marco (de dispositivo y de cada
+      bloque), la tipografía, la forma, la densidad, la elevación, el fondo y el tamaño de pantalla
+      simulado — todo en vivo, sobre la misma paleta. Hacé click directo sobre un botón, un bloque o
+      el título de la muestra para editarlo ahí mismo, al estilo Canva.
+    </p>
+  </header>
+
+  <div class="layout">
+    <div class="rail" id="rail"></div>
+    <div class="canvas-shell">
+      <div class="viewport-label" id="viewportLabel"><span class="dot"></span>Móvil · 375px</div>
+      <div class="canvas-frame" id="canvasFrame">
+        <div class="device-frame" id="deviceFrame"><div class="sample-root" id="sampleRoot"></div></div>
+      </div>
+      <div class="sample-popover" id="samplePopover" hidden></div>
+      <div class="export-panel" id="exportPanel" hidden></div>
+    </div>
+  </div>
+
+  <footer class="note">
+    Prototipo autocontenido — no está conectado a Prisma ni a Firebase. Sirve para decidir qué
+    controles vale la pena llevar a la app real.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Utilidades de color (mismas fórmulas que src/App.jsx) ---------- */
+  function hexToRgb(hex) {
+    var clean = hex.replace("#", "");
+    var n = parseInt(clean, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+  function relativeLuminance(hex) {
+    var rgb = hexToRgb(hex);
+    var chans = [rgb.r, rgb.g, rgb.b].map(function (v) {
+      var c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * chans[0] + 0.7152 * chans[1] + 0.0722 * chans[2];
+  }
+  function contrastRatio(a, b) {
+    var l1 = relativeLuminance(a), l2 = relativeLuminance(b);
+    var light = Math.max(l1, l2), dark = Math.min(l1, l2);
+    return (light + 0.05) / (dark + 0.05);
+  }
+  function wcagLabel(ratio) {
+    if (ratio >= 7) return { tag: "AAA", ok: true };
+    if (ratio >= 4.5) return { tag: "AA", ok: true };
+    if (ratio >= 3) return { tag: "AA grande", ok: true };
+    return { tag: "Falla", ok: false };
+  }
+  function bestTextColor(bg) {
+    return contrastRatio(bg, "#FFFFFF") >= contrastRatio(bg, "#000000") ? "#FFFFFF" : "#000000";
+  }
+  function isHex(v) { return /^#?[0-9a-fA-F]{6}$/.test(v.trim()); }
+  function norm(v) {
+    v = v.trim();
+    return (v[0] === "#" ? v : "#" + v).toUpperCase();
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ---------- Datos demo (mismos tonos que la librería curada de Prisma) ---------- */
+  var DEMO_PALETTES = [
+    { name: "Pasteles", colors: ["#F7C6D9", "#C4EAD6", "#D9CDF0", "#FBDCC0"] },
+    { name: "Vibrante", colors: ["#FF6B5B", "#2B6CFF", "#FFD23F", "#7ED321"] },
+    { name: "Tierra", colors: ["#B5603E", "#C9A876", "#6E7454", "#5C3D2E"] },
+    { name: "Neón", colors: ["#FF2DA8", "#39FF6A", "#00F0FF", "#A64BFF"] },
+  ];
+
+  var COMPONENTS = [
+    { id: "navbar", label: "Navbar" },
+    { id: "breadcrumbs", label: "Breadcrumbs" },
+    { id: "hero", label: "Hero" },
+    { id: "tabs", label: "Tabs" },
+    { id: "botones", label: "Botones" },
+    { id: "chips", label: "Chips" },
+    { id: "alerta", label: "Alerta" },
+    { id: "tarjeta", label: "Tarjeta" },
+    { id: "avatar", label: "Avatar" },
+    { id: "formulario", label: "Formulario" },
+    { id: "barras", label: "Gráfico de barras" },
+    { id: "progreso", label: "Barra de progreso" },
+    { id: "dona", label: "Gráfico de dona" },
+    { id: "tabla", label: "Tabla" },
+    { id: "paginacion", label: "Paginación" },
+    { id: "badges", label: "Badges" },
+    { id: "switch", label: "Switch" },
+    { id: "modal", label: "Modal" },
+    { id: "tooltip", label: "Tooltip" },
+  ];
+  var ROLES = ["Primario", "Secundario", "Acento", "Superficie", "Éxito", "Advertencia", "Error"];
+  var ROLE_SLUGS = { "Primario": "primario", "Secundario": "secundario", "Acento": "acento", "Superficie": "superficie", "Éxito": "exito", "Advertencia": "advertencia", "Error": "error" };
+  var SEMANTIC_ROLE_DEFAULTS = { "Éxito": "#2E9E5B", "Advertencia": "#F5A623", "Error": "#D64545" };
+  var BTN_INSTANCES = ["btnPrimario", "btnSecundario", "btnEnviar", "btnModal"];
+  var FRAME_INSTANCES = ["frameTarjeta", "frameFormulario", "frameBarras", "frameDona", "frameTabla", "frameModal"];
+  var RADIUS = { recto: "2px", suave: "8px", redondeado: "16px", pildora: "999px" };
+  // Para bloques grandes (tarjetas, tablas, formularios) el radio se limita: aplicar
+  // el valor "píldora" literal a un contenedor ancho y bajo recorta su contenido.
+  var RADIUS_BLOCK = { recto: "2px", suave: "10px", redondeado: "20px", pildora: "28px" };
+  var RADIUS_LABELS = { recto: "Recto", suave: "Suave", redondeado: "Redondeado", pildora: "Píldora" };
+  var DENSITY = {
+    compacta: { pad: "10px", gap: "8px" },
+    comoda: { pad: "16px", gap: "14px" },
+    amplia: { pad: "24px", gap: "20px" },
+  };
+  var DENSITY_LABELS = { compacta: "Compacta", comoda: "Cómoda", amplia: "Amplia" };
+  var ELEVATION = {
+    plano: "none",
+    sutil: "0 1px 2px rgba(0,0,0,.10), 0 1px 1px rgba(0,0,0,.06)",
+    marcado: "0 10px 28px rgba(0,0,0,.22), 0 3px 8px rgba(0,0,0,.16)",
+  };
+  var ELEVATION_LABELS = { plano: "Plano", sutil: "Sutil", marcado: "Marcado" };
+  var BG_LABELS = { claro: "Claro", oscuro: "Oscuro", custom: "Personalizado", gradient: "Degradé" };
+  var VIEWPORTS = { movil: { w: 375, label: "Móvil · 375px" }, tablet: { w: 680, label: "Tablet · 680px" }, escritorio: { w: 1040, label: "Escritorio" } };
+  var DEVICE_FRAME_LABELS = { ninguno: "Ninguno", navegador: "Navegador", celular: "Celular" };
+
+  var SYSTEM_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  var BUTTON_LABELS = { relleno: "Relleno", contorno: "Contorno", fantasma: "Fantasma", suave: "Suave", enlace: "Enlace" };
+  var BLOCK_FRAME_LABELS = { borde: "Con borde", sinBorde: "Sin borde", sombra: "Solo sombra", acento: "Barra de acento" };
+  var FONT_LABELS = { sistema: "Sistema", clasica: "Clásica", geometrica: "Geométrica", editorial: "Editorial" };
+  var FONT_PAIRS = {
+    sistema: { display: SYSTEM_FONT, body: SYSTEM_FONT },
+    clasica: { display: '"Fraunces", Georgia, serif', body: SYSTEM_FONT },
+    geometrica: { display: '"Sora", ' + SYSTEM_FONT, body: SYSTEM_FONT },
+    editorial: { display: '"Fraunces", Georgia, serif', body: '"Lora", Georgia, serif' },
+  };
+
+  // Config. de la edición al estilo Canva: click en un elemento de la muestra abre el
+  // popover de su grupo, reutilizando las mismas opciones que el riel de controles.
+  var POPOVER_CONFIG = {
+    btn: { title: "Estilo de botón", labels: BUTTON_LABELS, dataAttr: "btn", mapKey: "buttonStyles", instances: BTN_INSTANCES, fallback: "relleno" },
+    frame: { title: "Marco del bloque", labels: BLOCK_FRAME_LABELS, dataAttr: "frame", mapKey: "blockFrames", instances: FRAME_INSTANCES, fallback: "borde" },
+    font: { title: "Tipografía", labels: FONT_LABELS, dataAttr: "font", stateKey: "fontPair" },
+  };
+
+  /* ---------- Estado ---------- */
+  var state = {
+    paletteIdx: 1,
+    colors: DEMO_PALETTES[1].colors.slice(),
+    hexDraft: DEMO_PALETTES[1].colors.join(", "),
+    hexError: "",
+    components: { navbar: true, breadcrumbs: false, hero: true, tabs: false, botones: true, chips: false, alerta: false, tarjeta: true, avatar: false, formulario: false, barras: true, progreso: false, dona: false, tabla: false, paginacion: false, badges: true, switch: false, modal: false, tooltip: false },
+    switchOn: true,
+    tabActive: 0,
+    chipsSelected: { 0: true, 2: true },
+    paginaActual: 2,
+    modalOpen: true,
+    tooltipOpen: false,
+    roles: { Primario: 0, Secundario: 1, Acento: 2, Superficie: 3, "Éxito": "custom", "Advertencia": "custom", "Error": "custom" },
+    customRoleColors: { "Éxito": "#2E9E5B", "Advertencia": "#F5A623", "Error": "#D64545" },
+    radius: "suave",
+    density: "comoda",
+    elevation: "sutil",
+    bgMode: "oscuro",
+    customBg: "#2B6CFF",
+    gradientA: 0,
+    gradientB: 1,
+    viewport: "movil",
+    deviceFrame: "ninguno",
+    buttonStyles: { btnPrimario: "relleno", btnSecundario: "relleno", btnEnviar: "relleno", btnModal: "relleno" },
+    blockFrames: { frameTarjeta: "borde", frameFormulario: "borde", frameBarras: "borde", frameDona: "borde", frameTabla: "borde", frameModal: "borde" },
+    fontPair: "sistema",
+    a11y: true,
+    exportOpen: false,
+    activePopoverGroup: null,
+    activePopoverInstance: null,
+  };
+
+  function roleColor(role) {
+    var val = state.roles[role];
+    if (val === "custom") return state.customRoleColors[role] || "#888888";
+    return state.colors[val % state.colors.length];
+  }
+
+  function a11yBadge(fg, bg) {
+    if (!state.a11y) return "";
+    var ratio = contrastRatio(fg, bg);
+    var r = wcagLabel(ratio);
+    var okStyle = "background:var(--good-soft);color:var(--good)";
+    var badStyle = "background:var(--bad-soft);color:var(--bad)";
+    return '<span class="a11y-badge" style="' + (r.ok ? okStyle : badStyle) + '">' +
+      ratio.toFixed(1) + " · " + r.tag + "</span>";
+  }
+
+  // HTML de un grupo de botones segmentados reutilizado tanto en el riel como en el
+  // popover de edición al estilo Canva (misma opción, mismo estado, un solo lugar).
+  // Para "btn"/"frame" el estado es por instancia (cada botón/bloque puede diferir);
+  // para "font" (sin instancia) sigue siendo un único valor global.
+  function optionButtonsHtml(kind, instanceId) {
+    var cfg = POPOVER_CONFIG[kind];
+    var current = cfg.mapKey ? (state[cfg.mapKey][instanceId] || cfg.fallback) : state[cfg.stateKey];
+    return Object.keys(cfg.labels).map(function (k) {
+      return '<button data-' + cfg.dataAttr + '="' + k + '" class="' + (current === k ? "active" : "") + '">' + cfg.labels[k] + '</button>';
+    }).join("");
+  }
+
+  // Versión "aplicar a todas las instancias" usada en el riel: solo resalta una opción
+  // si todas las instancias comparten ese mismo valor (si no, ninguna aparece activa).
+  function bulkOptionButtonsHtml(kind) {
+    var cfg = POPOVER_CONFIG[kind];
+    var values = cfg.instances.map(function (id) { return state[cfg.mapKey][id] || cfg.fallback; });
+    var uniform = values.every(function (v) { return v === values[0]; }) ? values[0] : null;
+    return Object.keys(cfg.labels).map(function (k) {
+      return '<button data-bulk-' + cfg.dataAttr + '="' + k + '" class="' + (uniform === k ? "active" : "") + '">' + cfg.labels[k] + '</button>';
+    }).join("");
+  }
+
+  function setStyleOption(kind, instanceId, value) {
+    var cfg = POPOVER_CONFIG[kind];
+    if (cfg.mapKey) {
+      if (instanceId === "ALL") {
+        cfg.instances.forEach(function (id) { state[cfg.mapKey][id] = value; });
+      } else {
+        state[cfg.mapKey][instanceId] = value;
+      }
+    } else {
+      state[cfg.stateKey] = value;
+    }
+    renderRail();
+    renderSample();
+  }
+
+  function buttonVariantStyle(color, instanceId) {
+    var styleKey = state.buttonStyles[instanceId] || "relleno";
+    switch (styleKey) {
+      case "contorno": return "background:transparent;color:" + color + ";border:1.5px solid " + color + ";text-decoration:none";
+      case "fantasma": return "background:transparent;color:" + color + ";border:none;text-decoration:none";
+      case "suave": return "background:" + color + "22;color:" + color + ";border:none;text-decoration:none";
+      case "enlace": return "background:transparent;color:" + color + ";border:none;text-decoration:underline;text-underline-offset:2px";
+      default: return "background:" + color + ";color:" + bestTextColor(color) + ";border:none;text-decoration:none";
+    }
+  }
+
+  function blockFrameStyle(tint, surf, instanceId) {
+    var shadow = ELEVATION[state.elevation];
+    var styleKey = state.blockFrames[instanceId] || "borde";
+    switch (styleKey) {
+      case "sinBorde": return "background:" + tint + "1c;border:none;box-shadow:" + shadow;
+      case "sombra": return "background:" + surf.panel + ";border:none;box-shadow:0 8px 20px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.10)";
+      case "acento": return "background:" + tint + "14;border:none;border-left:4px solid " + tint + ";box-shadow:" + shadow;
+      default: return "background:" + tint + "14;border:1px solid " + tint + "44;box-shadow:" + shadow;
+    }
+  }
+
+  /* ---------- Exportar código ---------- */
+  function exportSnapshot() {
+    var rolesOut = {};
+    ROLES.forEach(function (r) { rolesOut[r] = roleColor(r); });
+    return {
+      paleta: state.colors,
+      componentesActivos: COMPONENTS.filter(function (c) { return state.components[c.id]; }).map(function (c) { return c.id; }),
+      roles: rolesOut,
+      forma: state.radius,
+      densidad: state.density,
+      elevacion: state.elevation,
+      fondo: state.bgMode,
+      estiloBotones: state.buttonStyles,
+      marcosDeBloque: state.blockFrames,
+      tipografia: state.fontPair,
+      marcoDispositivo: state.deviceFrame,
+      pantalla: state.viewport,
+    };
+  }
+
+  function exportCss() {
+    var dens = DENSITY[state.density];
+    var lines = [":root {"];
+    ROLES.forEach(function (r) {
+      lines.push("  --color-" + ROLE_SLUGS[r] + ": " + roleColor(r) + ";");
+    });
+    lines.push("  --radius: " + RADIUS[state.radius] + ";");
+    lines.push("  --radius-block: " + RADIUS_BLOCK[state.radius] + ";");
+    lines.push("  --space: " + dens.pad + ";");
+    lines.push("  --gap: " + dens.gap + ";");
+    lines.push("  --font-display: " + FONT_PAIRS[state.fontPair].display + ";");
+    lines.push("  --font-body: " + FONT_PAIRS[state.fontPair].body + ";");
+    lines.push("}");
+    return lines.join("\n");
+  }
+
+  function copyToClipboard(text, btn) {
+    var original = btn.textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function () {});
+    }
+    btn.textContent = "Copiado ✓";
+    setTimeout(function () { btn.textContent = original; }, 1200);
+  }
+
+  function renderExportPanel() {
+    var panel = document.getElementById("exportPanel");
+    if (!state.exportOpen) {
+      panel.hidden = true;
+      return;
+    }
+    var css = exportCss();
+    var json = JSON.stringify(exportSnapshot(), null, 2);
+    panel.innerHTML =
+      '<div class="pop-title">Exportar código<button class="pop-close" id="exportClose">✕ Cerrar</button></div>' +
+      '<div class="export-block"><div class="export-head"><span>Variables CSS</span>' +
+      '<button class="hex-apply export-copy" id="copyCss">Copiar</button></div>' +
+      '<pre class="hex-input">' + escapeHtml(css) + '</pre></div>' +
+      '<div class="export-block"><div class="export-head"><span>JSON de configuración</span>' +
+      '<button class="hex-apply export-copy" id="copyJson">Copiar</button></div>' +
+      '<pre class="hex-input" style="min-height:120px">' + escapeHtml(json) + '</pre></div>';
+    panel.hidden = false;
+    document.getElementById("exportClose").addEventListener("click", function () {
+      state.exportOpen = false;
+      renderRail();
+      renderExportPanel();
+    });
+    document.getElementById("copyCss").addEventListener("click", function (e) { copyToClipboard(css, e.currentTarget); });
+    document.getElementById("copyJson").addEventListener("click", function (e) { copyToClipboard(json, e.currentTarget); });
+  }
+
+  /* ---------- Render: riel de controles ---------- */
+  function renderRail() {
+    var rail = document.getElementById("rail");
+    var html = "";
+
+    // Paleta
+    html += '<div class="card"><h2>Paleta</h2><div class="demo-row">';
+    DEMO_PALETTES.forEach(function (p, i) {
+      html += '<button class="demo-chip' + (i === state.paletteIdx ? " active" : "") + '" data-demo="' + i + '">' +
+        '<div class="sw">' + p.colors.map(function (c) { return '<span style="background:' + c + '"></span>'; }).join("") + '</div>' +
+        '<div class="name">' + p.name + '</div></button>';
+    });
+    html += '</div>' +
+      '<textarea class="hex-input" id="hexInput" spellcheck="false">' + escapeHtml(state.hexDraft) + '</textarea>' +
+      '<div class="hex-error">' + escapeHtml(state.hexError) + '</div>' +
+      '<button class="hex-apply" id="hexApply">Aplicar colores</button></div>';
+
+    // Componentes
+    html += '<div class="card"><h2>Componentes</h2><div class="check-grid">';
+    COMPONENTS.forEach(function (c) {
+      html += '<label class="check-row"><input type="checkbox" data-comp="' + c.id + '" ' +
+        (state.components[c.id] ? "checked" : "") + ' />' + c.label + '</label>';
+    });
+    html += '</div></div>';
+
+    // Roles
+    html += '<div class="card"><h2>Asignación de roles</h2>';
+    ROLES.forEach(function (role) {
+      var val = state.roles[role];
+      var isCustom = val === "custom";
+      var swColor = isCustom ? (state.customRoleColors[role] || "#888888") : state.colors[val % state.colors.length];
+      html += '<div class="role-row"><span class="role-sw" style="background:' + swColor + '"></span>' +
+        '<span style="width:64px;flex-shrink:0;font-size:11px;color:var(--muted)">' + role + '</span>' +
+        '<select class="role-select" data-role="' + role + '">';
+      state.colors.forEach(function (c, i) {
+        html += '<option value="' + i + '"' + (!isCustom && i === val ? " selected" : "") + '>' + c + '</option>';
+      });
+      html += '<option value="custom"' + (isCustom ? " selected" : "") + '>Personalizado…</option>';
+      html += '</select>';
+      if (isCustom) {
+        html += '<input type="color" data-role-color="' + role + '" value="' + swColor + '" ' +
+          'style="width:26px;height:26px;flex-shrink:0;padding:0;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer" />';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Forma
+    html += '<div class="card"><h2>Forma</h2><div class="seg" data-group="radius">';
+    Object.keys(RADIUS).forEach(function (k) {
+      html += '<button data-radius="' + k + '" class="' + (state.radius === k ? "active" : "") + '">' + RADIUS_LABELS[k] + '</button>';
+    });
+    html += '</div></div>';
+
+    // Densidad
+    html += '<div class="card"><h2>Densidad</h2><div class="seg" data-group="density">';
+    Object.keys(DENSITY).forEach(function (k) {
+      html += '<button data-density="' + k + '" class="' + (state.density === k ? "active" : "") + '">' + DENSITY_LABELS[k] + '</button>';
+    });
+    html += '</div></div>';
+
+    // Elevación
+    html += '<div class="card"><h2>Elevación</h2><div class="seg" data-group="elevation">';
+    Object.keys(ELEVATION).forEach(function (k) {
+      html += '<button data-elevation="' + k + '" class="' + (state.elevation === k ? "active" : "") + '">' + ELEVATION_LABELS[k] + '</button>';
+    });
+    html += '</div></div>';
+
+    // Fondo
+    html += '<div class="card"><h2>Fondo de la muestra</h2><div class="seg" data-group="bg" style="margin-bottom:8px">';
+    Object.keys(BG_LABELS).forEach(function (k) {
+      html += '<button data-bg="' + k + '" class="' + (state.bgMode === k ? "active" : "") + '">' + BG_LABELS[k] + '</button>';
+    });
+    html += '</div>';
+    if (state.bgMode === "custom") {
+      html += '<input type="color" id="customBgInput" value="' + state.customBg + '" style="width:100%;height:30px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer" />';
+    } else if (state.bgMode === "gradient") {
+      html += '<div style="display:flex;gap:8px"><select class="role-select" id="gradA">' +
+        state.colors.map(function (c, i) { return '<option value="' + i + '"' + (i === state.gradientA ? " selected" : "") + '>' + c + '</option>'; }).join("") +
+        '</select><select class="role-select" id="gradB">' +
+        state.colors.map(function (c, i) { return '<option value="' + i + '"' + (i === state.gradientB ? " selected" : "") + '>' + c + '</option>'; }).join("") +
+        '</select></div>';
+    }
+    html += '</div>';
+
+    // Estilo de botón (aplica a todos los botones de la muestra; cada uno también se
+    // puede editar individualmente con un click directo sobre él).
+    html += '<div class="card"><h2>Estilo de botón <span style="font-weight:400;text-transform:none;letter-spacing:0">· todos</span></h2>' +
+      '<div class="seg">' + bulkOptionButtonsHtml("btn") + '</div></div>';
+
+    // Marco de bloque (aplica a todos los bloques; igual, cada uno se puede editar solo).
+    html += '<div class="card"><h2>Marco de bloque <span style="font-weight:400;text-transform:none;letter-spacing:0">· todos</span></h2>' +
+      '<div class="seg">' + bulkOptionButtonsHtml("frame") + '</div></div>';
+
+    // Fuentes
+    html += '<div class="card"><h2>Fuentes</h2><div class="seg">' + optionButtonsHtml("font") + '</div></div>';
+
+    // Pantalla: tamaño + marco de dispositivo
+    html += '<div class="card"><h2>Pantalla</h2><div class="seg" data-group="viewport" style="margin-bottom:8px">';
+    Object.keys(VIEWPORTS).forEach(function (k) {
+      html += '<button data-viewport="' + k + '" class="' + (state.viewport === k ? "active" : "") + '">' + VIEWPORTS[k].label.split(" ·")[0] + '</button>';
+    });
+    html += '</div><div class="seg">';
+    Object.keys(DEVICE_FRAME_LABELS).forEach(function (k) {
+      html += '<button data-device="' + k + '" class="' + (state.deviceFrame === k ? "active" : "") + '">' + DEVICE_FRAME_LABELS[k] + '</button>';
+    });
+    html += '</div></div>';
+
+    // Accesibilidad
+    html += '<div class="card"><div class="switch-row"><span class="lbl">Badges de contraste WCAG</span>' +
+      '<button class="switch' + (state.a11y ? " on" : "") + '" id="a11yToggle"><span class="knob"></span></button></div></div>';
+
+    // Exportar código
+    html += '<div class="card"><h2>Exportar</h2>' +
+      '<button class="hex-apply" id="exportToggle">' + (state.exportOpen ? "Ocultar código" : "Ver código (CSS / JSON)") + '</button></div>';
+
+    rail.innerHTML = html;
+    bindRailEvents();
+  }
+
+  function bindRailEvents() {
+    document.querySelectorAll("[data-demo]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var i = +btn.getAttribute("data-demo");
+        state.paletteIdx = i;
+        state.colors = DEMO_PALETTES[i].colors.slice();
+        state.hexDraft = state.colors.join(", ");
+        state.hexError = "";
+        state.roles.Primario = 0;
+        state.roles.Secundario = 1 % state.colors.length;
+        state.roles.Acento = 2 % state.colors.length;
+        state.roles.Superficie = 3 % state.colors.length;
+        renderRail();
+        renderSample();
+      });
+    });
+
+    document.getElementById("hexApply").addEventListener("click", function () {
+      var raw = document.getElementById("hexInput").value;
+      var parts = raw.split(/[\s,]+/).filter(Boolean);
+      if (!parts.length || !parts.every(isHex)) {
+        state.hexError = "Usá códigos HEX válidos separados por coma (ej: #2B6CFF, #FFD23F).";
+        renderRail();
+        return;
+      }
+      state.colors = parts.map(norm);
+      state.hexDraft = state.colors.join(", ");
+      state.hexError = "";
+      state.paletteIdx = -1;
+      ["Primario", "Secundario", "Acento", "Superficie"].forEach(function (r, i) { state.roles[r] = i % state.colors.length; });
+      renderRail();
+      renderSample();
+    });
+
+    document.querySelectorAll("[data-comp]").forEach(function (box) {
+      box.addEventListener("change", function () {
+        state.components[box.getAttribute("data-comp")] = box.checked;
+        renderSample();
+      });
+    });
+
+    document.querySelectorAll("[data-role]").forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        var v = sel.value;
+        state.roles[sel.getAttribute("data-role")] = v === "custom" ? "custom" : +v;
+        renderRail();
+        renderSample();
+      });
+    });
+
+    document.querySelectorAll("[data-role-color]").forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        state.customRoleColors[inp.getAttribute("data-role-color")] = inp.value;
+        renderSample();
+      });
+    });
+
+    ["radius", "density", "elevation", "bg", "viewport"].forEach(function (group) {
+      document.querySelectorAll('[data-' + group + ']').forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          state[group === "bg" ? "bgMode" : group] = btn.getAttribute("data-" + group);
+          renderRail();
+          renderSample();
+        });
+      });
+    });
+
+    ["btn", "frame"].forEach(function (kind) {
+      var attr = POPOVER_CONFIG[kind].dataAttr;
+      document.querySelectorAll('[data-bulk-' + attr + ']').forEach(function (b) {
+        b.addEventListener("click", function () { setStyleOption(kind, "ALL", b.getAttribute("data-bulk-" + attr)); });
+      });
+    });
+    document.querySelectorAll('[data-' + POPOVER_CONFIG.font.dataAttr + ']').forEach(function (b) {
+      b.addEventListener("click", function () { setStyleOption("font", null, b.getAttribute("data-" + POPOVER_CONFIG.font.dataAttr)); });
+    });
+
+    document.querySelectorAll("[data-device]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.deviceFrame = b.getAttribute("data-device");
+        renderRail();
+        renderSample();
+      });
+    });
+
+    var customBgInput = document.getElementById("customBgInput");
+    if (customBgInput) {
+      customBgInput.addEventListener("input", function () {
+        state.customBg = customBgInput.value;
+        renderSample();
+      });
+    }
+    var gradA = document.getElementById("gradA"), gradB = document.getElementById("gradB");
+    if (gradA) gradA.addEventListener("change", function () { state.gradientA = +gradA.value; renderSample(); });
+    if (gradB) gradB.addEventListener("change", function () { state.gradientB = +gradB.value; renderSample(); });
+
+    document.getElementById("a11yToggle").addEventListener("click", function () {
+      state.a11y = !state.a11y;
+      renderRail();
+      renderSample();
+    });
+
+    document.getElementById("exportToggle").addEventListener("click", function () {
+      state.exportOpen = !state.exportOpen;
+      renderRail();
+      renderExportPanel();
+    });
+  }
+
+  /* ---------- Render: lienzo de muestra ---------- */
+  function sampleSurface() {
+    if (state.bgMode === "claro") return { bg: "#FFFFFF", fg: "#16161A", muted: "#6B6B72", panel: "#F7F7F6", border: "#E4E4E8" };
+    if (state.bgMode === "custom") return { bg: state.customBg, fg: bestTextColor(state.customBg), muted: bestTextColor(state.customBg) === "#FFFFFF" ? "rgba(255,255,255,.68)" : "rgba(20,20,25,.62)", panel: "rgba(255,255,255,.08)", border: "rgba(255,255,255,.18)" };
+    if (state.bgMode === "gradient") {
+      var a = state.colors[state.gradientA % state.colors.length];
+      var fg = bestTextColor(a);
+      return { bg: "linear-gradient(135deg, " + a + ", " + state.colors[state.gradientB % state.colors.length] + ")", fg: fg, muted: fg === "#FFFFFF" ? "rgba(255,255,255,.68)" : "rgba(20,20,25,.62)", panel: "rgba(255,255,255,.1)", border: "rgba(255,255,255,.2)" };
+    }
+    return { bg: "#141419", fg: "#F2F2F5", muted: "#9A9AA5", panel: "#1E1E26", border: "#2A2A33" };
+  }
+
+  function block(html) { return '<div class="sample-block">' + html + '</div>'; }
+
+  // Reconstruye el marco de dispositivo (ninguno/navegador/celular) alrededor del
+  // lienzo; #sampleRoot queda siempre adentro, vacío, listo para que renderSample lo rellene.
+  function renderDeviceChrome() {
+    var frameEl = document.getElementById("deviceFrame");
+    frameEl.className = "device-frame" + (state.deviceFrame !== "ninguno" ? " " + state.deviceFrame : "");
+    var chrome = "";
+    if (state.deviceFrame === "navegador") {
+      chrome = '<div class="browser-bar"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div>';
+    } else if (state.deviceFrame === "celular") {
+      chrome = '<div class="notch"></div>';
+    }
+    frameEl.innerHTML = chrome + '<div class="sample-root" id="sampleRoot"></div>';
+  }
+
+  function renderSample() {
+    renderDeviceChrome();
+    var root = document.getElementById("sampleRoot");
+    var deviceFrameEl = document.getElementById("deviceFrame");
+    var hasChrome = state.deviceFrame !== "ninguno";
+    var vp = VIEWPORTS[state.viewport];
+    deviceFrameEl.style.maxWidth = state.viewport === "escritorio" ? "100%" : vp.w + "px";
+    document.getElementById("viewportLabel").innerHTML = '<span class="dot"></span>' + vp.label;
+
+    var surf = sampleSurface();
+    var rad = RADIUS[state.radius];
+    var radBlock = RADIUS_BLOCK[state.radius];
+    var dens = DENSITY[state.density];
+    root.style.setProperty("--s-pad", dens.pad);
+    root.style.setProperty("--s-gap", dens.gap);
+    root.style.setProperty("--font-display", FONT_PAIRS[state.fontPair].display);
+    root.style.setProperty("--font-body", FONT_PAIRS[state.fontPair].body);
+    root.style.border = hasChrome ? "none" : "1px solid " + surf.border;
+    root.style.background = surf.bg;
+    root.style.borderRadius = hasChrome && state.deviceFrame === "navegador" ? "0 0 " + radBlock + " " + radBlock : radBlock;
+
+    var primario = roleColor("Primario");
+    var secundario = roleColor("Secundario");
+    var acento = roleColor("Acento");
+    var superficie = roleColor("Superficie");
+
+    var parts = [];
+
+    if (state.components.navbar) {
+      parts.push(
+        '<div style="background:' + primario + ';padding:' + dens.pad + ';display:flex;align-items:center;justify-content:space-between;border-radius:' + radBlock + ' ' + radBlock + ' 0 0">' +
+        '<span class="s-heading" style="font-weight:700;font-size:13px;color:' + bestTextColor(primario) + '">Marca</span>' +
+        '<div style="display:flex;gap:5px">' + state.colors.map(function (c) { return '<span style="width:9px;height:9px;border-radius:50%;background:' + c + '"></span>'; }).join("") + '</div></div>'
+      );
+    }
+
+    var inner = [];
+
+    if (state.components.breadcrumbs) {
+      var crumbs = ["Inicio", "Categoría", "Producto"];
+      inner.push(block(
+        '<div class="s-body" style="display:flex;align-items:center;gap:4px;font-size:11px;flex-wrap:wrap">' +
+        crumbs.map(function (c, i) {
+          var isLast = i === crumbs.length - 1;
+          return (i > 0 ? '<span style="color:' + surf.muted + '">/</span>' : "") +
+            '<span style="color:' + (isLast ? primario : surf.muted) + ';font-weight:' + (isLast ? "600" : "400") + '">' + c + '</span>';
+        }).join("") +
+        '</div>'
+      ));
+    }
+
+    if (state.components.hero) {
+      inner.push(block(
+        '<p data-editable="font" class="s-heading" style="margin:0 0 4px;font-size:16px;font-weight:700;color:' + surf.fg + '">Título de producto</p>' +
+        '<p class="s-body" style="margin:0;font-size:12px;color:' + surf.muted + '">Una descripción corta para evaluar el contraste sobre este fondo.' + a11yBadge(surf.fg, typeof surf.bg === "string" && surf.bg.indexOf("gradient") < 0 ? surf.bg : "#808080") + '</p>'
+      ));
+    }
+
+    if (state.components.tabs) {
+      var tabLabels = ["Resumen", "Detalles", "Reseñas"];
+      inner.push(block(
+        '<div style="display:flex;gap:' + dens.gap + ';border-bottom:1px solid ' + surf.border + '">' +
+        tabLabels.map(function (t, i) {
+          var isActive = i === state.tabActive;
+          return '<button class="sample-btn s-body" data-tab="' + i + '" style="background:none;border:none;padding:0 0 8px;font-size:12px;font-weight:' + (isActive ? "700" : "500") + ';color:' + (isActive ? primario : surf.muted) + ';border-bottom:2px solid ' + (isActive ? primario : "transparent") + ';cursor:pointer">' + t + '</button>';
+        }).join("") +
+        '</div>'
+      ));
+    }
+
+    if (state.components.botones) {
+      var primStyle = state.buttonStyles.btnPrimario || "relleno";
+      var secStyle = state.buttonStyles.btnSecundario || "relleno";
+      var primBtnBg = primStyle === "relleno" ? primario : surf.bg;
+      var secBtnBg = secStyle === "relleno" ? secundario : surf.bg;
+      inner.push(block(
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<button data-editable="btn:btnPrimario" class="sample-btn" style="' + buttonVariantStyle(primario, "btnPrimario") + ';border-radius:' + rad + ';padding:8px 14px;font-size:12px;font-weight:600">Primario' + a11yBadge(primStyle === "relleno" ? bestTextColor(primario) : primario, primBtnBg) + '</button>' +
+        '<button data-editable="btn:btnSecundario" class="sample-btn" style="' + buttonVariantStyle(secundario, "btnSecundario") + ';border-radius:' + rad + ';padding:7px 14px;font-size:12px;font-weight:600">Secundario' + a11yBadge(secStyle === "relleno" ? bestTextColor(secundario) : secundario, secBtnBg) + '</button>' +
+        '</div>'
+      ));
+    }
+
+    if (state.components.chips) {
+      var chipLabels = ["Todo", "Nuevo", "Popular", "Oferta"];
+      inner.push(block(
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+        chipLabels.map(function (c, i) {
+          var sel = !!state.chipsSelected[i];
+          return '<button class="sample-btn s-body" data-chip="' + i + '" style="background:' + (sel ? acento : "transparent") + ';color:' + (sel ? bestTextColor(acento) : surf.muted) + ';border:1px solid ' + (sel ? acento : surf.border) + ';border-radius:999px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer">' + c + '</button>';
+        }).join("") +
+        '</div>'
+      ));
+    }
+
+    if (state.components.alerta) {
+      inner.push(block(
+        '<div style="background:' + acento + '22;border:1px solid ' + acento + ';border-radius:' + radBlock + ';padding:' + dens.pad + ';font-size:12px;color:' + surf.fg + '">' +
+        '<strong class="s-heading" style="color:' + acento + '">Aviso</strong> <span class="s-body">— así se ve una alerta usando el color de acento.</span>' +
+        '</div>'
+      ));
+    }
+
+    if (state.components.tarjeta) {
+      inner.push(block(
+        '<div data-editable="frame:frameTarjeta" style="' + blockFrameStyle(superficie, surf, "frameTarjeta") + ';border-radius:' + radBlock + ';padding:' + dens.pad + '">' +
+        '<p class="s-heading" style="margin:0 0 4px;font-size:12px;font-weight:600;color:' + surf.fg + '">Tarjeta</p>' +
+        '<p class="s-body" style="margin:0;font-size:11px;color:' + surf.muted + '">Contenido con un <span style="color:' + acento + ';font-weight:600">link de acento</span>.</p>' +
+        '</div>'
+      ));
+    }
+
+    if (state.components.avatar) {
+      inner.push(block(
+        '<div style="display:flex;align-items:center;gap:10px">' +
+        '<div style="width:40px;height:40px;border-radius:50%;background:' + secundario + ';color:' + bestTextColor(secundario) + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">MP</div>' +
+        '<div><p class="s-heading" style="margin:0;font-size:12px;font-weight:600;color:' + surf.fg + '">María Paz</p>' +
+        '<p class="s-body" style="margin:0;font-size:10px;color:' + surf.muted + '">Diseñadora</p></div>' +
+        '</div>'
+      ));
+    }
+
+    if (state.components.formulario) {
+      inner.push(block(
+        '<form id="sampleForm" data-editable="frame:frameFormulario" style="' + blockFrameStyle(superficie, surf, "frameFormulario") + ';border-radius:' + radBlock + ';padding:' + dens.pad + '">' +
+        '<label for="sampleEmailInput" class="s-body" style="display:block;font-size:10px;color:' + surf.muted + ';margin-bottom:4px">Correo electrónico</label>' +
+        '<input id="sampleEmailInput" type="email" placeholder="nombre@correo.com" class="sample-input s-body" style="width:100%;background:' + surf.bg + ';border:1px solid ' + surf.border + ';border-radius:min(' + radBlock + ', 10px);padding:7px 9px;font-size:11px;color:' + surf.fg + ';margin-bottom:8px" />' +
+        '<button type="submit" data-editable="btn:btnEnviar" class="sample-btn" style="' + buttonVariantStyle(primario, "btnEnviar") + ';border-radius:' + rad + ';padding:7px 14px;font-size:11px;font-weight:600">Enviar</button>' +
+        '<span id="sampleFormOk" class="s-body" style="font-size:10px;color:' + surf.muted + ';margin-left:8px;opacity:0;transition:opacity .15s ease">✓ Listo (no se envía nada de verdad)</span>' +
+        '</form>'
+      ));
+    }
+
+    if (state.components.barras) {
+      var pattern = [55, 85, 40, 70, 95, 60, 80, 45];
+      inner.push(block(
+        '<div data-editable="frame:frameBarras" style="' + blockFrameStyle(superficie, surf, "frameBarras") + ';border-radius:' + radBlock + ';padding:' + dens.pad + '">' +
+        '<p class="s-heading" style="margin:0 0 10px;font-size:11px;font-weight:600;color:' + surf.fg + '">Gráfico de barras</p>' +
+        '<div style="display:flex;align-items:flex-end;gap:5px;height:56px">' +
+        state.colors.map(function (c, i) {
+          var h = pattern[i % pattern.length];
+          return '<div style="flex:1;height:' + h + '%;background:' + c + ';border-radius:3px 3px 0 0"></div>';
+        }).join("") +
+        '</div></div>'
+      ));
+    }
+
+    if (state.components.progreso) {
+      var exito = roleColor("Éxito");
+      inner.push(block(
+        '<div>' +
+        '<div class="s-body" style="display:flex;justify-content:space-between;font-size:10px;color:' + surf.muted + ';margin-bottom:5px"><span>Progreso</span><span>68%</span></div>' +
+        '<div style="height:8px;border-radius:999px;background:' + surf.border + ';overflow:hidden">' +
+        '<div style="width:68%;height:100%;background:' + exito + ';border-radius:999px"></div>' +
+        '</div></div>'
+      ));
+    }
+
+    if (state.components.dona) {
+      var step = 100 / state.colors.length;
+      var stops = state.colors.map(function (c, i) { return c + " " + (i * step) + "% " + ((i + 1) * step) + "%"; }).join(", ");
+      inner.push(block(
+        '<div data-editable="frame:frameDona" style="' + blockFrameStyle(superficie, surf, "frameDona") + ';border-radius:' + radBlock + ';padding:' + dens.pad + ';display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+        '<div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(' + stops + ');flex-shrink:0;display:flex;align-items:center;justify-content:center">' +
+        '<div style="width:34px;height:34px;border-radius:50%;background:' + surf.bg + '"></div></div>' +
+        '<div class="s-body" style="display:flex;flex-direction:column;gap:3px">' +
+        state.colors.map(function (c, i) {
+          return '<span style="font-size:10px;color:' + surf.muted + '"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + c + ';margin-right:5px"></span>Serie ' + (i + 1) + '</span>';
+        }).join("") +
+        '</div></div>'
+      ));
+    }
+
+    if (state.components.tabla) {
+      inner.push(block(
+        '<div data-editable="frame:frameTabla" style="' + blockFrameStyle(superficie, surf, "frameTabla") + ';border-radius:' + radBlock + ';overflow:hidden">' +
+        '<div class="s-heading" style="display:flex;background:' + superficie + '22;padding:7px ' + dens.pad + ';font-size:10px;font-weight:600;color:' + surf.fg + '"><span style="flex:2">Elemento</span><span style="flex:1">Estado</span></div>' +
+        state.colors.slice(0, 4).map(function (c, i) {
+          return '<div class="sample-row s-body" style="display:flex;align-items:center;padding:7px ' + dens.pad + ';font-size:11px;color:' + surf.muted + ';border-top:1px solid ' + surf.border + '"><span style="flex:2">Fila ' + (i + 1) + '</span><span style="flex:1;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:' + c + '"></span>Activo</span></div>';
+        }).join("") +
+        '</div>'
+      ));
+    }
+
+    if (state.components.paginacion) {
+      inner.push(block(
+        '<div style="display:flex;gap:5px;justify-content:center">' +
+        [1, 2, 3, 4, 5].map(function (n) {
+          var isActive = n === state.paginaActual;
+          return '<button class="sample-btn s-body" data-page="' + n + '" style="width:26px;height:26px;border-radius:' + rad + ';border:1px solid ' + (isActive ? primario : surf.border) + ';background:' + (isActive ? primario : "transparent") + ';color:' + (isActive ? bestTextColor(primario) : surf.muted) + ';font-size:11px;font-weight:600;cursor:pointer">' + n + '</button>';
+        }).join("") +
+        '</div>'
+      ));
+    }
+
+    if (state.components.badges) {
+      inner.push(block(
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+        state.colors.map(function (c, i) {
+          return '<span style="background:' + c + ';color:' + bestTextColor(c) + ';font-size:10px;font-weight:600;padding:4px 9px;border-radius:' + rad + '">Etiqueta ' + (i + 1) + '</span>';
+        }).join("") +
+        '</div>'
+      ));
+    }
+
+    if (state.components.switch) {
+      var swOn = state.switchOn;
+      inner.push(block(
+        '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:' + surf.fg + '">' +
+        '<span>Notificaciones</span>' +
+        '<button id="sampleSwitch" class="sample-switch" style="width:34px;height:20px;border-radius:999px;background:' + (swOn ? primario : surf.border) + ';position:relative">' +
+        '<span class="knob" style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transform:' + (swOn ? "translateX(14px)" : "translateX(0)") + '"></span></button>' +
+        '</div>'
+      ));
+    }
+
+    if (state.components.modal) {
+      if (state.modalOpen) {
+        inner.push(block(
+          '<div data-editable="frame:frameModal" style="' + blockFrameStyle(superficie, surf, "frameModal") + ';border-radius:' + radBlock + ';padding:' + dens.pad + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<p class="s-heading" style="margin:0;font-size:13px;font-weight:700;color:' + surf.fg + '">Confirmar acción</p>' +
+          '<button id="sampleModalClose" class="s-body" style="background:none;border:none;color:' + surf.muted + ';font-size:13px;cursor:pointer;padding:0">✕</button>' +
+          '</div>' +
+          '<p class="s-body" style="margin:0 0 12px;font-size:11px;color:' + surf.muted + '">Mockup de modal — así se vería con el estilo elegido.</p>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+          '<button data-editable="btn:btnModal" class="sample-btn" style="' + buttonVariantStyle(primario, "btnModal") + ';border-radius:' + rad + ';padding:7px 14px;font-size:11px;font-weight:600">Aceptar</button>' +
+          '</div></div>'
+        ));
+      } else {
+        inner.push(block(
+          '<button id="sampleModalOpen" class="sample-btn s-body" style="background:none;border:1px dashed ' + surf.border + ';border-radius:' + radBlock + ';padding:' + dens.pad + ';width:100%;font-size:11px;color:' + surf.muted + ';cursor:pointer">Abrir modal</button>'
+        ));
+      }
+    }
+
+    if (state.components.tooltip) {
+      inner.push(block(
+        '<div style="position:relative;display:inline-block">' +
+        '<button id="sampleTooltipTrigger" class="sample-btn s-body" style="width:20px;height:20px;border-radius:50%;background:' + surf.border + ';color:' + surf.fg + ';border:none;font-size:11px;font-weight:700;cursor:pointer">?</button>' +
+        (state.tooltipOpen ? '<div class="s-body" style="position:absolute;top:26px;left:0;background:' + surf.fg + ';color:' + bestTextColor(surf.fg) + ';font-size:10px;padding:6px 9px;border-radius:6px;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.2);z-index:1">Esto es un tooltip</div>' : "") +
+        '</div>'
+      ));
+    }
+
+    var body = '<div class="sample-inner">' +
+      (inner.length ? inner.join("") : '<p style="font-size:12px;color:' + surf.muted + '">Marcá al menos un componente para ver la muestra.</p>') +
+      '</div>';
+
+    parts.push(body);
+    root.innerHTML = parts.join("");
+    bindSampleEvents();
+    updatePopover();
+    renderExportPanel();
+  }
+
+  function bindSampleEvents() {
+    var sw = document.getElementById("sampleSwitch");
+    if (sw) {
+      sw.addEventListener("click", function () {
+        state.switchOn = !state.switchOn;
+        renderSample();
+      });
+    }
+    var form = document.getElementById("sampleForm");
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var ok = document.getElementById("sampleFormOk");
+        if (ok) {
+          ok.style.opacity = "1";
+          setTimeout(function () { ok.style.opacity = "0"; }, 1400);
+        }
+      });
+    }
+    document.querySelectorAll("[data-tab]").forEach(function (b) {
+      b.addEventListener("click", function () { state.tabActive = +b.getAttribute("data-tab"); renderSample(); });
+    });
+    document.querySelectorAll("[data-chip]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var i = b.getAttribute("data-chip");
+        state.chipsSelected[i] = !state.chipsSelected[i];
+        renderSample();
+      });
+    });
+    document.querySelectorAll("[data-page]").forEach(function (b) {
+      b.addEventListener("click", function () { state.paginaActual = +b.getAttribute("data-page"); renderSample(); });
+    });
+    var tooltipTrigger = document.getElementById("sampleTooltipTrigger");
+    if (tooltipTrigger) {
+      tooltipTrigger.addEventListener("click", function (e) {
+        e.stopPropagation();
+        state.tooltipOpen = !state.tooltipOpen;
+        renderSample();
+      });
+    }
+    var modalClose = document.getElementById("sampleModalClose");
+    if (modalClose) {
+      modalClose.addEventListener("click", function (e) {
+        e.stopPropagation();
+        state.modalOpen = false;
+        renderSample();
+      });
+    }
+    var modalOpen = document.getElementById("sampleModalOpen");
+    if (modalOpen) {
+      modalOpen.addEventListener("click", function () { state.modalOpen = true; renderSample(); });
+    }
+  }
+
+  /* ---------- Edición al estilo Canva: panel contextual del elemento clickeado ----------
+     Vive en flujo normal debajo del lienzo (ver CSS de .sample-popover) — nada de
+     coordenadas calculadas a mano, así no depende de cómo el visor envuelva la página. */
+  function bindPopoverButtons() {
+    var kind = state.activePopoverGroup;
+    var instanceId = state.activePopoverInstance;
+    var cfg = POPOVER_CONFIG[kind];
+    document.querySelectorAll('#samplePopover [data-' + cfg.dataAttr + ']').forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        setStyleOption(kind, instanceId, b.getAttribute("data-" + cfg.dataAttr));
+      });
+    });
+    var closeBtn = document.querySelector("#samplePopover .pop-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        state.activePopoverGroup = null;
+        state.activePopoverInstance = null;
+        updatePopover();
+      });
+    }
+  }
+
+  function updatePopover() {
+    var pop = document.getElementById("samplePopover");
+    document.querySelectorAll(".is-selected").forEach(function (el) { el.classList.remove("is-selected"); });
+    if (!state.activePopoverGroup) {
+      pop.hidden = true;
+      return;
+    }
+    var kind = state.activePopoverGroup;
+    var instanceId = state.activePopoverInstance;
+    var cfg = POPOVER_CONFIG[kind];
+    var selector = instanceId ? '[data-editable="' + kind + ':' + instanceId + '"]' : '[data-editable="' + kind + '"]';
+    var target = document.querySelector(selector);
+    if (!target) {
+      pop.hidden = true;
+      state.activePopoverGroup = null;
+      state.activePopoverInstance = null;
+      return;
+    }
+    target.classList.add("is-selected");
+    pop.innerHTML = '<div class="pop-title">' + cfg.title + '<button class="pop-close">✕ Cerrar</button></div>' + optionButtonsHtml(kind, instanceId);
+    pop.hidden = false;
+    bindPopoverButtons();
+  }
+
+  document.getElementById("canvasFrame").addEventListener("click", function (e) {
+    var editable = e.target.closest("[data-editable]");
+    if (editable) {
+      var raw = editable.getAttribute("data-editable").split(":");
+      state.activePopoverGroup = raw[0];
+      state.activePopoverInstance = raw[1] || null;
+    } else {
+      state.activePopoverGroup = null;
+      state.activePopoverInstance = null;
+    }
+    updatePopover();
+  });
+  document.addEventListener("click", function (e) {
+    if (state.activePopoverGroup && !e.target.closest("#canvasFrame") && !e.target.closest("#samplePopover")) {
+      state.activePopoverGroup = null;
+      state.activePopoverInstance = null;
+      updatePopover();
+    }
+  });
+
+  renderRail();
+  renderSample();
+
+  if (window.claude && window.claude.hot) {
+    var start = function () { renderRail(); renderSample(); };
+    window.claude.hot.ready ? window.claude.hot.ready(start) : start();
+  }
+})();
+</script>
