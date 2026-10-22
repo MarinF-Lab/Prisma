@@ -2,7 +2,7 @@ import React from "react";
 import {
   SAMPLE_COMPONENTS, SAMPLE_ROLES, SHAPE_LABELS, DENSITY_LABELS, ELEVATION_LABELS,
   BACKGROUND_LABELS, BUTTON_STYLE_LABELS, BLOCK_FRAME_LABELS, FONT_PAIR_LABELS,
-  VIEWPORT_OPTIONS, DEVICE_FRAME_LABELS, BUTTON_INSTANCE_IDS, BLOCK_INSTANCE_IDS,
+  DEVICE_PRESET_LABELS, BUTTON_INSTANCE_IDS, BLOCK_INSTANCE_IDS,
 } from "./sampleLabConstants.js";
 
 function Card({ ui, title, children }) {
@@ -74,10 +74,6 @@ function RoleRow({ ui, role, lab, palette }) {
     </div>
   );
 }
-
-const VIEWPORT_SHORT_LABELS = Object.fromEntries(
-  Object.entries(VIEWPORT_OPTIONS).map(([k, v]) => [k, v.label.split(" ·")[0]])
-);
 
 export function SampleLabControls({ ui, palette, lab }) {
   return (
@@ -177,10 +173,7 @@ export function SampleLabControls({ ui, palette, lab }) {
       </Card>
 
       <Card ui={ui} title="Pantalla">
-        <SegmentedGroup ui={ui} options={VIEWPORT_SHORT_LABELS} value={lab.viewport} onChange={lab.setViewport} />
-        <div className="mt-2">
-          <SegmentedGroup ui={ui} options={DEVICE_FRAME_LABELS} value={lab.deviceFrame} onChange={lab.setDeviceFrame} />
-        </div>
+        <SegmentedGroup ui={ui} options={DEVICE_PRESET_LABELS} value={lab.devicePreset} onChange={lab.setDevicePreset} />
       </Card>
 
       <Card ui={ui} title="Accesibilidad">

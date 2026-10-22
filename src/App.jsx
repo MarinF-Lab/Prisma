@@ -334,12 +334,65 @@ export default function Prisma() {
     { id: "guardadas", label: "Guardadas", Icon: IconSaved },
   ];
 
+  // Un solo renderer para el botón de nav, reutilizado por la barra inferior
+  // (mobile) y el sidebar (md+) — mismo ítem, distinta orientación.
+  const renderNavButton = (item, { vertical }) => {
+    const active = screen === item.id;
+    const icon =
+      item.id === "pruebas" ? (
+        <div
+          className="rounded-full flex items-center justify-center"
+          style={{
+            width: 34, height: 34,
+            background: active ? "#8B5CF622" : "transparent",
+            border: `1.5px solid ${active ? "#8B5CF6" : ui.border}`,
+          }}
+        >
+          <LogoMark size={18} />
+        </div>
+      ) : (
+        <item.Icon active={active} />
+      );
+    if (vertical) {
+      return (
+        <button
+          key={item.id}
+          onClick={() => setScreen(item.id)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full"
+          style={{ color: active ? "#8B5CF6" : ui.muted, background: active ? "#8B5CF614" : "transparent" }}
+        >
+          {icon}
+          <span className="text-sm font-medium hidden lg:inline">{item.label}</span>
+        </button>
+      );
+    }
+    return (
+      <button
+        key={item.id}
+        onClick={() => setScreen(item.id)}
+        className="flex flex-col items-center gap-0.5 px-3 py-1"
+        style={{ color: active ? "#8B5CF6" : ui.muted }}
+      >
+        {icon}
+        <span className="text-[10px]">{item.label}</span>
+      </button>
+    );
+  };
+
   return (
-    <div style={{ background: ui.bg, color: ui.text, minHeight: "100%" }} className="font-sans">
-      <div className="max-w-md mx-auto pb-24 relative min-h-full">
+    <div style={{ background: ui.bg, color: ui.text, minHeight: "100%" }} className="font-sans md:flex">
+      {/* ---------- Sidebar de navegación (md+) ---------- */}
+      <nav
+        className="hidden md:flex md:flex-col md:w-20 lg:w-56 md:flex-shrink-0 md:border-r md:py-5 md:px-2 lg:px-3 md:sticky md:top-0 md:h-screen md:gap-1"
+        style={{ borderColor: ui.border, background: ui.bg }}
+      >
+        {NAV_ITEMS.map((item) => renderNavButton(item, { vertical: true }))}
+      </nav>
+
+      <div className="flex-1 min-w-0 relative">
         {/* ---------- Barra superior común ---------- */}
         <header
-          className="flex items-center justify-between px-4 pt-5 pb-3 sticky top-0 z-20"
+          className="flex items-center justify-between px-4 pt-5 pb-3 sticky top-0 z-20 h-14"
           style={{ background: ui.bg }}
         >
           <div className="flex items-center gap-2">
@@ -379,7 +432,8 @@ export default function Prisma() {
           </div>
         </header>
 
-        <main className="px-4">
+        <main className="px-4 md:px-6 lg:px-8 pb-24 md:pb-8">
+        <div className="max-w-md md:max-w-2xl lg:max-w-5xl mx-auto">
           {/* ================= INICIO ================= */}
           {screen === "inicio" && (
             <>
@@ -408,7 +462,7 @@ export default function Prisma() {
               <h2 className="text-sm font-medium mb-2" style={{ color: ui.muted }}>
                 Explorar por categoría
               </h2>
-              <div className="grid grid-cols-2 gap-2 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat}
@@ -492,7 +546,7 @@ export default function Prisma() {
               <p className="text-xs mb-2" style={{ color: ui.muted }}>
                 {filteredColors.length} colores
               </p>
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
                 {filteredColors.map((c) => (
                   <button
                     key={c.hex}
@@ -626,7 +680,7 @@ export default function Prisma() {
               </div>
 
               {sampleView === "tarjetas" ? (
-                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 mb-4">
                   {palette.map((c, i) => (
                     <ColorSampleCard
                       key={i}
@@ -760,56 +814,30 @@ export default function Prisma() {
               )}
             </>
           )}
+        </div>
         </main>
 
-        {/* ---------- Barra inferior de navegación ---------- */}
+        {/* ---------- Barra inferior de navegación (solo <md, en md+ es el sidebar) ---------- */}
         <nav
-          className="fixed bottom-0 left-0 right-0 max-w-md mx-auto border-t flex items-center justify-around py-2 z-30"
+          className="md:hidden fixed bottom-0 left-0 right-0 border-t flex items-center justify-around py-2 z-30"
           style={{ background: ui.bg, borderColor: ui.border }}
         >
-          {NAV_ITEMS.map((item) => {
-            const active = screen === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setScreen(item.id)}
-                className="flex flex-col items-center gap-0.5 px-3 py-1"
-                style={{ color: active ? "#8B5CF6" : ui.muted }}
-              >
-                {item.id === "pruebas" ? (
-                  <div
-                    className="rounded-full flex items-center justify-center"
-                    style={{
-                      width: 34,
-                      height: 34,
-                      background: active ? "#8B5CF622" : "transparent",
-                      border: `1.5px solid ${active ? "#8B5CF6" : ui.border}`,
-                    }}
-                  >
-                    <LogoMark size={18} />
-                  </div>
-                ) : (
-                  <item.Icon active={active} />
-                )}
-                <span className="text-[10px]">{item.label}</span>
-              </button>
-            );
-          })}
+          {NAV_ITEMS.map((item) => renderNavButton(item, { vertical: false }))}
         </nav>
-
-        {loginModal && (
-          <LoginModal
-            ui={ui}
-            reason={loginModal}
-            busy={loginBusy}
-            error={loginError}
-            onGoogle={handleGoogleLogin}
-            onDismiss={() => setLoginModal(null)}
-          />
-        )}
-
-        {exportOpen && <ExportModal ui={ui} colors={palette} onClose={() => setExportOpen(false)} />}
       </div>
+
+      {loginModal && (
+        <LoginModal
+          ui={ui}
+          reason={loginModal}
+          busy={loginBusy}
+          error={loginError}
+          onGoogle={handleGoogleLogin}
+          onDismiss={() => setLoginModal(null)}
+        />
+      )}
+
+      {exportOpen && <ExportModal ui={ui} colors={palette} onClose={() => setExportOpen(false)} />}
     </div>
   );
 }

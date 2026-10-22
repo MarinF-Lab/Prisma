@@ -17,8 +17,7 @@ export function buildExportSnapshot(lab, palette) {
     estiloBotones: lab.buttonStyles,
     marcosDeBloque: lab.blockFrames,
     tipografia: lab.fontPair,
-    marcoDispositivo: lab.deviceFrame,
-    pantalla: lab.viewport,
+    dispositivo: lab.devicePreset,
   };
 }
 

@@ -9,7 +9,7 @@ export function LoginModal({ ui, reason, onGoogle, onDismiss, busy, error }) {
       style={{ background: "rgba(0,0,0,0.55)" }}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 pb-6"
+        className="w-full max-w-md sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 pb-6"
         style={{ background: ui.panel, border: `1px solid ${ui.border}`, color: ui.text }}
       >
         <h2 className="text-lg font-semibold mb-1">Inicia sesión</h2>
