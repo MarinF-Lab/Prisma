@@ -1,10 +1,11 @@
 import React from "react";
 import { useSampleLabState } from "./useSampleLabState.js";
 import { SampleLabControls } from "./SampleLabControls.jsx";
+import { SampleLabMobileControls } from "./SampleLabMobileControls.jsx";
 import { SampleLabCanvas } from "./SampleLabCanvas.jsx";
 import { EditPopover } from "./EditPopover.jsx";
 import { SampleLabExportModal } from "./SampleLabExportModal.jsx";
-import { buildExportSnapshot, buildExportCss } from "./sampleLabExport.js";
+import { buildExportSnapshot, buildExportCss, buildExportPromptMd } from "./sampleLabExport.js";
 import { BUTTON_STYLE_LABELS, BLOCK_FRAME_LABELS } from "./sampleLabConstants.js";
 
 // Reemplaza al antiguo InterfaceMockup: mockup de "Interfaz" de la Zona de
@@ -50,8 +51,13 @@ export function SampleLab({ ui, palette }) {
         )}
       </div>
 
-      <div className="mt-4 lg:mt-0 lg:order-1 max-h-[50vh] lg:max-h-[calc(100vh-3.5rem)] overflow-y-auto lg:pr-1">
-        <SampleLabControls ui={ui} palette={palette} lab={lab} />
+      <div className="mt-4 lg:mt-0 lg:order-1">
+        <div className="hidden lg:block lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:pr-1">
+          <SampleLabControls ui={ui} palette={palette} lab={lab} />
+        </div>
+        <div className="lg:hidden">
+          <SampleLabMobileControls ui={ui} palette={palette} lab={lab} />
+        </div>
       </div>
 
       {lab.labExportOpen && (
@@ -59,6 +65,7 @@ export function SampleLab({ ui, palette }) {
           ui={ui}
           cssText={buildExportCss(lab, palette)}
           jsonText={JSON.stringify(buildExportSnapshot(lab, palette), null, 2)}
+          mdText={buildExportPromptMd(lab, palette)}
           onClose={() => lab.setLabExportOpen(false)}
         />
       )}
