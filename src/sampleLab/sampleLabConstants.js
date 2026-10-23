@@ -68,8 +68,16 @@ export const ELEVATION_LABELS = { plano: "Plano", sutil: "Sutil", marcado: "Marc
 
 export const BACKGROUND_LABELS = { claro: "Claro", oscuro: "Oscuro", personalizado: "Personalizado", degrade: "Degradé" };
 
-export const VIEWPORT_OPTIONS = { movil: { w: 375, label: "Móvil · 375px" }, tablet: { w: 680, label: "Tablet · 680px" }, escritorio: { w: null, label: "Escritorio" } };
-export const DEVICE_FRAME_LABELS = { ninguno: "Ninguno", navegador: "Navegador", celular: "Celular" };
+// Simulador de dispositivo dentro del lienzo — independiente del ancho real de
+// la ventana del navegador. Cada preset siempre viene con su marco (nunca "sin marco").
+export const DEVICE_PRESETS = {
+  movil: { width: 375, label: "Móvil · 375px", frame: "celular" },
+  tablet: { width: 680, label: "Tablet · 680px", frame: "celular" },
+  escritorio: { width: null, label: "Escritorio", frame: "navegador" },
+};
+export const DEVICE_PRESET_LABELS = Object.fromEntries(
+  Object.entries(DEVICE_PRESETS).map(([k, v]) => [k, v.label.split(" ·")[0]])
+);
 
 const SYSTEM_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 export const FONT_PAIR_LABELS = { sistema: "Sistema", clasica: "Clásica", geometrica: "Geométrica", editorial: "Editorial" };

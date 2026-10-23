@@ -33,8 +33,7 @@ export function useSampleLabState() {
   const [gradientFromIndex, setGradientFromIndex] = useState(0);
   const [gradientToIndex, setGradientToIndex] = useState(1);
   const [fontPair, setFontPair] = useState("sistema");
-  const [viewport, setViewport] = useState("movil");
-  const [deviceFrame, setDeviceFrame] = useState("ninguno");
+  const [devicePreset, setDevicePreset] = useState("movil");
   const [showA11yBadges, setShowA11yBadges] = useState(true);
 
   // Interacciones de demo dentro de las piezas (no forman parte del export).
@@ -100,8 +99,7 @@ export function useSampleLabState() {
     gradientFromIndex, setGradientFromIndex,
     gradientToIndex, setGradientToIndex,
     fontPair, setFontPair,
-    viewport, setViewport,
-    deviceFrame, setDeviceFrame,
+    devicePreset, setDevicePreset,
     showA11yBadges, setShowA11yBadges,
     switchOn, setSwitchOn,
     activeTabIndex, setActiveTabIndex,

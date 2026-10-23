@@ -26,7 +26,7 @@ export function ExportModal({ ui, colors, onClose }) {
       style={{ background: "rgba(0,0,0,0.55)" }}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 pb-6 max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-md sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 pb-6 max-h-[85vh] overflow-y-auto"
         style={{ background: ui.panel, border: `1px solid ${ui.border}`, color: ui.text }}
       >
         <div className="flex items-center justify-between mb-4">

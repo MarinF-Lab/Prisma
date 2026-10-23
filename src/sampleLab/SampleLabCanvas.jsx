@@ -1,12 +1,13 @@
 import React from "react";
 import { bestTextColor, contrastRatio, wcagLabel } from "../colorUtils.js";
-import { SHAPE_RADIUS, SHAPE_RADIUS_BLOCK, DENSITY_VALUES, ELEVATION_SHADOWS, VIEWPORT_OPTIONS, FONT_PAIRS } from "./sampleLabConstants.js";
+import { SHAPE_RADIUS, SHAPE_RADIUS_BLOCK, DENSITY_VALUES, ELEVATION_SHADOWS, DEVICE_PRESETS, FONT_PAIRS } from "./sampleLabConstants.js";
 import { resolveSampleSurface } from "./sampleSurface.js";
 import { Navbar, Breadcrumbs, Hero, Tabs, Badges, Chips, Alerta } from "./pieces/LayoutPieces.jsx";
 import { Tarjeta, Avatar, Formulario, GraficoBarras, BarraProgreso, GraficoDona, Tabla, Paginacion } from "./pieces/ContentPieces.jsx";
 import { Botones, Switch, Modal, Tooltip } from "./pieces/InteractivePieces.jsx";
 
-// Marco de dispositivo opcional (puramente decorativo) alrededor del lienzo.
+// Marco de dispositivo alrededor del lienzo — siempre hay uno (no existe la
+// opción "sin marco"): navegador para escritorio, celular para móvil/tablet.
 function DeviceChrome({ deviceFrame, maxWidth, children }) {
   if (deviceFrame === "navegador") {
     return (
@@ -23,20 +24,17 @@ function DeviceChrome({ deviceFrame, maxWidth, children }) {
       </div>
     );
   }
-  if (deviceFrame === "celular") {
-    return (
-      <div
-        className="mx-auto"
-        style={{ maxWidth, width: "100%", background: "#1A1A1E", padding: "14px 10px 20px", borderRadius: 34, boxShadow: "0 14px 34px rgba(0,0,0,.28)" }}
-      >
-        <div className="mx-auto" style={{ width: 64, height: 16, background: "#1A1A1E", borderRadius: "0 0 10px 10px", marginBottom: 8, position: "relative" }}>
-          <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 30, height: 4, borderRadius: 2, background: "#000" }} />
-        </div>
-        {children}
+  return (
+    <div
+      className="mx-auto"
+      style={{ maxWidth, width: "100%", background: "#1A1A1E", padding: "14px 10px 20px", borderRadius: 34, boxShadow: "0 14px 34px rgba(0,0,0,.28)" }}
+    >
+      <div className="mx-auto" style={{ width: 64, height: 16, background: "#1A1A1E", borderRadius: "0 0 10px 10px", marginBottom: 8, position: "relative" }}>
+        <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 30, height: 4, borderRadius: 2, background: "#000" }} />
       </div>
-    );
-  }
-  return <div className="mx-auto" style={{ maxWidth, width: "100%" }}>{children}</div>;
+      {children}
+    </div>
+  );
 }
 
 export function SampleLabCanvas({ ui, palette, lab }) {
@@ -52,8 +50,7 @@ export function SampleLabCanvas({ ui, palette, lab }) {
   const dens = DENSITY_VALUES[lab.density];
   const elevationShadow = ELEVATION_SHADOWS[lab.elevation];
   const fontPairResolved = FONT_PAIRS[lab.fontPair];
-  const viewportInfo = VIEWPORT_OPTIONS[lab.viewport];
-  const hasChrome = lab.deviceFrame !== "ninguno";
+  const preset = DEVICE_PRESETS[lab.devicePreset];
 
   const principal = lab.roleColor("Principal", palette);
   const secundario = lab.roleColor("Secundario", palette);
@@ -156,7 +153,7 @@ export function SampleLabCanvas({ ui, palette, lab }) {
   if (vc.tooltip)
     innerBlocks.push(<Tooltip key="tooltip" ctx={ctx} tooltipOpen={lab.tooltipOpen} onToggle={() => lab.setTooltipOpen((v) => !v)} />);
 
-  const maxWidth = viewportInfo.w ? viewportInfo.w : "100%";
+  const maxWidth = preset.width ? preset.width : "100%";
 
   return (
     <div>
@@ -165,20 +162,22 @@ export function SampleLabCanvas({ ui, palette, lab }) {
         style={{ color: ui.muted, background: ui.panel, border: `1px solid ${ui.border}` }}
       >
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8B5CF6" }} />
-        {viewportInfo.label}
+        {preset.label}
       </div>
       <div className="rounded-2xl p-5 flex justify-center overflow-x-auto" style={{ background: ui.panel2, border: `1px solid ${ui.border}` }}>
-        <DeviceChrome deviceFrame={lab.deviceFrame} maxWidth={maxWidth}>
+        <DeviceChrome deviceFrame={preset.frame} maxWidth={maxWidth}>
           <div
+            className="flex flex-col overflow-hidden max-h-[55vh] lg:max-h-[70vh]"
             style={{
               background: surf.bg,
-              border: hasChrome ? "none" : `1px solid ${surf.border}`,
-              borderRadius: hasChrome && lab.deviceFrame === "navegador" ? `0 0 ${radBlock} ${radBlock}` : radBlock,
-              overflow: "hidden",
+              borderRadius: preset.frame === "navegador" ? `0 0 ${radBlock} ${radBlock}` : radBlock,
             }}
           >
             {vc.navbar && <Navbar ctx={ctx} palette={palette} principal={principal} />}
-            <div style={{ padding: dens.pad, display: "flex", flexDirection: "column", gap: dens.gap }}>
+            <div
+              className="overflow-y-auto min-h-0"
+              style={{ padding: dens.pad, display: "flex", flexDirection: "column", gap: dens.gap }}
+            >
               {innerBlocks.length ? (
                 innerBlocks
               ) : (
