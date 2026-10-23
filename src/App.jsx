@@ -1,11 +1,13 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
+import { getPalette as extractPaletteFromImage } from "colorthief";
 import { useAuth } from "./useAuth.js";
 import { useUserPalettes } from "./useUserPalettes.js";
 import { useColorLibrary } from "./useColorLibrary.js";
 import { LoginModal } from "./LoginModal.jsx";
 import { ExportModal } from "./ExportModal.jsx";
 import { ConfirmDeleteModal } from "./ConfirmDeleteModal.jsx";
-import { SampleLab } from "./sampleLab/SampleLab.jsx";
+import { TagsEditModal } from "./TagsEditModal.jsx";
+import { ComparePalettesModal } from "./ComparePalettesModal.jsx";
 import {
   bestTextColor,
   contrastRatio,
@@ -13,7 +15,15 @@ import {
   generateHarmony,
   randomHex,
   HARMONIES,
+  paletteContrastSummary,
 } from "./colorUtils.js";
+
+// Laboratorio de Muestras completo: es el bloque más grande y aislado del
+// bundle (solo se usa en la pestaña "Interfaz" de Pruebas), así que se carga
+// bajo demanda en vez de ir en el chunk inicial.
+const SampleLab = lazy(() =>
+  import("./sampleLab/SampleLab.jsx").then((m) => ({ default: m.SampleLab }))
+);
 
 /* ============================================================
    PRISMA — Muestrario y generador de combinaciones de color
@@ -87,12 +97,6 @@ function PaletteMockupCard({ name, colors, onClick, meta }) {
   );
 }
 
-/* Cuántos colores de una paleta pasan WCAG AA contra su mejor color de texto */
-function paletteContrastSummary(colors) {
-  const passing = colors.filter((c) => wcagLabel(contrastRatio(c, bestTextColor(c))).ok).length;
-  return `${passing}/${colors.length} con buen contraste`;
-}
-
 const encodePaletteParam = (colors) => colors.map((c) => c.replace("#", "")).join("-");
 const decodePaletteParam = (str) =>
   str
@@ -120,6 +124,7 @@ function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy, locked, o
           className="absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs"
           style={{ background: "rgba(0,0,0,0.35)", color: "#fff" }}
           title={locked ? "Desbloquear color" : "Bloquear color (no cambia al regenerar)"}
+          aria-label={locked ? "Desbloquear color" : "Bloquear color (no cambia al regenerar)"}
         >
           {locked ? "🔒" : "🔓"}
         </button>
@@ -209,9 +214,15 @@ export default function Prisma() {
   const [exportOpen, setExportOpen] = useState(false);
 
   const [saveName, setSaveName] = useState("");
+  const [saveTags, setSaveTags] = useState("");
   const [savedSearch, setSavedSearch] = useState("");
   const [savedSort, setSavedSort] = useState("recientes"); // recientes | favoritas | nombre
+  const [savedTagFilter, setSavedTagFilter] = useState("Todas");
   const [confirmDeleteTarget, setConfirmDeleteTarget] = useState(null); // { id, name } | null
+  const [editTagsTarget, setEditTagsTarget] = useState(null); // { id, name, tags } | null
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelection, setCompareSelection] = useState({}); // { [id]: true }
+  const [showCompareModal, setShowCompareModal] = useState(false);
 
   const [favColors, setFavColors] = useState(() => {
     try {
@@ -249,6 +260,7 @@ export default function Prisma() {
     savePalette: savePaletteRemote,
     removePalette: removePaletteRemote,
     toggleFavPalette: toggleFavRemote,
+    updatePaletteTags: updatePaletteTagsRemote,
   } = useUserPalettes(user?.uid);
 
   const [loginModal, setLoginModal] = useState(null); // null | "welcome" | "action"
@@ -353,6 +365,43 @@ export default function Prisma() {
     setPalette((prev) => fresh.map((col, i) => (lockedIndices.has(i) ? prev[i] ?? col : col)));
   };
 
+  const fileInputRef = useRef(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState("");
+
+  const handleImageFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite volver a elegir la misma imagen
+    if (!file) return;
+    setImageError("");
+    setImageBusy(true);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const colorCount = Math.max(2, Math.min(10, count));
+        const colors = await extractPaletteFromImage(img, { colorCount });
+        if (!colors || colors.length === 0) throw new Error("Sin colores");
+        const hexColors = colors.map((c) => c.hex());
+        setPalette(hexColors);
+        setCount(hexColors.length);
+        setBaseColor(hexColors[0]);
+        setLockedIndices(new Set());
+      } catch {
+        setImageError("No se pudo extraer colores de esta imagen. Probá con otra.");
+      } finally {
+        setImageBusy(false);
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => {
+      setImageError("No se pudo cargar esta imagen.");
+      setImageBusy(false);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
   const loadCurated = (p) => {
     setBaseColor(p.base);
     setHarmonyType(p.type);
@@ -367,8 +416,13 @@ export default function Prisma() {
       return;
     }
     const name = saveName.trim() || `Paleta ${savedPalettes.length + 1}`;
-    savePaletteRemote(user.uid, { name, colors: palette }).catch(() => {});
+    const tags = saveTags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    savePaletteRemote(user.uid, { name, colors: palette, tags }).catch(() => {});
     setSaveName("");
+    setSaveTags("");
   };
   const removeSaved = (id) => {
     if (!user) return;
@@ -378,10 +432,26 @@ export default function Prisma() {
     if (!user) return;
     toggleFavRemote(user.uid, id, fav).catch(() => {});
   };
+  const updateTags = (id, tags) => {
+    if (!user) return;
+    updatePaletteTagsRemote(user.uid, id, tags).catch(() => {});
+  };
+  const toggleCompare = (id) =>
+    setCompareSelection((prev) => {
+      if (prev[id]) {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      if (Object.keys(prev).length >= 3) return prev;
+      return { ...prev, [id]: true };
+    });
 
-  const filteredSaved = savedPalettes.filter((p) =>
-    p.name.toLowerCase().includes(savedSearch.trim().toLowerCase())
-  );
+  const filteredSaved = savedPalettes.filter((p) => {
+    const matchName = p.name.toLowerCase().includes(savedSearch.trim().toLowerCase());
+    const matchTag = savedTagFilter === "Todas" || (p.tags || []).includes(savedTagFilter);
+    return matchName && matchTag;
+  });
 
   const sortedSaved = useMemo(() => {
     const arr = [...filteredSaved];
@@ -389,6 +459,11 @@ export default function Prisma() {
     if (savedSort === "favoritas") return arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
     return arr; // "recientes": useUserPalettes.js ya pide orderBy("createdAt", "desc")
   }, [filteredSaved, savedSort]);
+
+  const uniqueTags = useMemo(
+    () => [...new Set(savedPalettes.flatMap((p) => p.tags || []))].sort(),
+    [savedPalettes]
+  );
 
   const roleFor = (i) => ROLES[i % ROLES.length];
 
@@ -425,6 +500,7 @@ export default function Prisma() {
           onClick={() => setScreen(item.id)}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full"
           style={{ color: active ? "#8B5CF6" : ui.muted, background: active ? "#8B5CF614" : "transparent" }}
+          aria-label={item.label}
         >
           {icon}
           <span className="text-sm font-medium hidden lg:inline">{item.label}</span>
@@ -471,6 +547,7 @@ export default function Prisma() {
                 className="w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center"
                 style={{ borderColor: ui.border }}
                 title={`Cerrar sesión (${user.displayName || user.email || ""})`}
+                aria-label={`Cerrar sesión (${user.displayName || user.email || ""})`}
               >
                 {user.photoURL ? (
                   <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
@@ -491,6 +568,7 @@ export default function Prisma() {
               onClick={() => setUiDark((v) => !v)}
               className="w-8 h-8 rounded-full border flex items-center justify-center"
               style={{ borderColor: ui.border, color: ui.muted }}
+              aria-label={uiDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
             >
               {uiDark ? "☀" : "●"}
             </button>
@@ -647,27 +725,28 @@ export default function Prisma() {
               ) : (
                 <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
                   {visibleColors.map((c) => (
-                    <button
-                      key={c.hex}
-                      onClick={() => {
-                        setBaseColor(c.hex);
-                        regenerate(harmonyType, count, c.hex);
-                        setScreen("pruebas");
-                      }}
-                      className="relative group text-left"
-                    >
-                      <div className="rounded-md overflow-hidden border" style={{ borderColor: ui.border, background: ui.panel }}>
-                        <div className="h-12" style={{ background: c.hex }} />
-                        <div className="px-1.5 py-1">
-                          <p className="text-[10px] truncate">{c.name}</p>
-                          <p className="text-[9px]" style={{ color: ui.muted, fontFamily: "monospace" }}>
-                            {c.hex}
-                          </p>
+                    <div key={c.hex} className="relative group">
+                      <button
+                        onClick={() => {
+                          setBaseColor(c.hex);
+                          regenerate(harmonyType, count, c.hex);
+                          setScreen("pruebas");
+                        }}
+                        className="w-full text-left"
+                      >
+                        <div className="rounded-md overflow-hidden border" style={{ borderColor: ui.border, background: ui.panel }}>
+                          <div className="h-12" style={{ background: c.hex }} />
+                          <div className="px-1.5 py-1">
+                            <p className="text-[10px] truncate">{c.name}</p>
+                            <p className="text-[9px]" style={{ color: ui.muted, fontFamily: "monospace" }}>
+                              {c.hex}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      </button>
 
-                      <span
-                        role="button"
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleFavColor(c.hex);
@@ -675,9 +754,10 @@ export default function Prisma() {
                         className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs"
                         style={{ background: "rgba(0,0,0,0.35)", color: favColors.has(c.hex) ? "#FFD56B" : "#fff" }}
                         title={favColors.has(c.hex) ? "Quitar de favoritos" : "Agregar a favoritos"}
+                        aria-label={favColors.has(c.hex) ? "Quitar de favoritos" : "Agregar a favoritos"}
                       >
                         {favColors.has(c.hex) ? "★" : "☆"}
-                      </span>
+                      </button>
 
                       {/* Preview hover — solo escritorio (md+), no intercepta el click, no existe en mobile */}
                       <div
@@ -693,7 +773,7 @@ export default function Prisma() {
                         </p>
                         <ContrastBadge ratio={contrastRatio(c.hex, "#FFFFFF")} />
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -730,7 +810,7 @@ export default function Prisma() {
                 ))}
               </div>
 
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-1 flex-wrap">
                 <label className="text-xs" style={{ color: ui.muted }}>
                   Color base
                 </label>
@@ -746,7 +826,28 @@ export default function Prisma() {
                 <span className="text-xs" style={{ fontFamily: "monospace", color: ui.muted }}>
                   {baseColor}
                 </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFile}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={imageBusy}
+                  className="text-[11px] px-2.5 py-1.5 rounded-full border disabled:opacity-60"
+                  style={{ borderColor: ui.border, color: ui.muted }}
+                >
+                  {imageBusy ? "Extrayendo…" : "🖼️ Desde imagen"}
+                </button>
               </div>
+              {imageError && (
+                <p className="text-xs mb-2" style={{ color: "#D64545" }}>
+                  {imageError}
+                </p>
+              )}
+              <div className="mb-3" />
 
               <div className="flex items-center gap-3 mb-4">
                 <label className="text-xs" style={{ color: ui.muted }}>
@@ -825,7 +926,15 @@ export default function Prisma() {
                 </div>
               ) : (
                 <div className="mb-4">
-                  <SampleLab ui={ui} palette={palette} />
+                  <Suspense
+                    fallback={
+                      <div className="rounded-lg border p-6 text-center text-xs" style={{ borderColor: ui.border, color: ui.muted }}>
+                        Cargando…
+                      </div>
+                    }
+                  >
+                    <SampleLab ui={ui} palette={palette} />
+                  </Suspense>
                 </div>
               )}
 
@@ -852,6 +961,7 @@ export default function Prisma() {
                   className="text-xs px-3 py-2.5 rounded-md border font-medium"
                   style={{ borderColor: ui.border, color: ui.text, background: ui.panel }}
                   title="Copiar link para compartir esta paleta"
+                  aria-label="Copiar link para compartir esta paleta"
                 >
                   {copiedKey === "share-palette" ? "Copiado ✓" : "🔗"}
                 </button>
@@ -867,6 +977,13 @@ export default function Prisma() {
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder="Nombre de la paleta (opcional)"
+                className="w-full text-sm px-3 py-2 rounded-md border outline-none mb-2"
+                style={{ background: ui.panel, borderColor: ui.border, color: ui.text }}
+              />
+              <input
+                value={saveTags}
+                onChange={(e) => setSaveTags(e.target.value)}
+                placeholder="Etiquetas, separadas por coma (opcional)"
                 className="w-full text-sm px-3 py-2 rounded-md border outline-none"
                 style={{ background: ui.panel, borderColor: ui.border, color: ui.text }}
               />
@@ -888,8 +1005,36 @@ export default function Prisma() {
                 style={{ background: ui.panel, borderColor: ui.border, color: ui.text }}
               />
 
+              {user && savedPalettes.length > 1 && (
+                <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setCompareMode((v) => !v);
+                      setCompareSelection({});
+                    }}
+                    className="text-xs px-2.5 py-1 rounded-full border"
+                    style={{
+                      borderColor: compareMode ? "#8B5CF6" : ui.border,
+                      background: compareMode ? "#8B5CF622" : "transparent",
+                      color: compareMode ? "#8B5CF6" : ui.muted,
+                    }}
+                  >
+                    {compareMode ? "✕ Cancelar comparación" : "⇄ Comparar"}
+                  </button>
+                  {compareMode && Object.keys(compareSelection).length >= 2 && (
+                    <button
+                      onClick={() => setShowCompareModal(true)}
+                      className="text-xs px-2.5 py-1 rounded-full font-medium"
+                      style={{ background: "#8B5CF6", color: "#fff" }}
+                    >
+                      Ver comparación ({Object.keys(compareSelection).length})
+                    </button>
+                  )}
+                </div>
+              )}
+
               {user && filteredSaved.length > 0 && (
-                <div className="flex gap-1.5 mb-4">
+                <div className="flex gap-1.5 mb-3 flex-wrap">
                   {[
                     { id: "recientes", label: "Recientes" },
                     { id: "favoritas", label: "Favoritas" },
@@ -906,6 +1051,25 @@ export default function Prisma() {
                       }}
                     >
                       {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {user && uniqueTags.length > 0 && (
+                <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                  {["Todas", ...uniqueTags].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setSavedTagFilter(t)}
+                      className="text-xs px-2.5 py-1 rounded-full border whitespace-nowrap flex-shrink-0"
+                      style={{
+                        borderColor: savedTagFilter === t ? ui.text : ui.border,
+                        background: savedTagFilter === t ? ui.text : "transparent",
+                        color: savedTagFilter === t ? ui.bg : ui.muted,
+                      }}
+                    >
+                      {t}
                     </button>
                   ))}
                 </div>
@@ -940,6 +1104,15 @@ export default function Prisma() {
                       className="flex items-center gap-3 rounded-lg border p-2.5"
                       style={{ borderColor: ui.border, background: ui.panel }}
                     >
+                      {compareMode && (
+                        <input
+                          type="checkbox"
+                          checked={!!compareSelection[sp.id]}
+                          onChange={() => toggleCompare(sp.id)}
+                          className="w-4 h-4 flex-shrink-0"
+                          style={{ accentColor: "#8B5CF6" }}
+                        />
+                      )}
                       <div className="flex rounded-md overflow-hidden flex-shrink-0" style={{ width: 64, height: 40 }}>
                         {sp.colors.map((c, i) => (
                           <div key={i} style={{ background: c, flex: 1 }} />
@@ -950,8 +1123,29 @@ export default function Prisma() {
                         <p className="text-[11px]" style={{ color: ui.muted }}>
                           {sp.colors.length} colores · {paletteContrastSummary(sp.colors)}
                         </p>
+                        {sp.tags?.length > 0 && (
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {sp.tags.map((t) => (
+                              <span
+                                key={t}
+                                className="text-[9px] px-1.5 py-0.5 rounded-full"
+                                style={{ background: ui.panel2, color: ui.muted }}
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <button onClick={() => toggleFav(sp.id, sp.fav)} className="text-lg leading-none">
+                      <button
+                        onClick={() => setEditTagsTarget({ id: sp.id, name: sp.name, tags: sp.tags || [] })}
+                        className="text-[11px] px-2 py-1 rounded border"
+                        style={{ borderColor: ui.border, color: ui.muted }}
+                        title="Editar etiquetas"
+                      >
+                        🏷️
+                      </button>
+                      <button onClick={() => toggleFav(sp.id, sp.fav)} className="text-lg leading-none" aria-label={sp.fav ? "Quitar de favoritos" : "Agregar a favoritos"}>
                         {sp.fav ? "♥" : "♡"}
                       </button>
                       <button
@@ -962,6 +1156,7 @@ export default function Prisma() {
                         className="text-[11px] px-2 py-1 rounded border"
                         style={{ borderColor: ui.border, color: ui.muted }}
                         title="Copiar link para compartir"
+                        aria-label="Copiar link para compartir"
                       >
                         {copiedKey === `share-${sp.id}` ? "Copiado ✓" : "🔗"}
                       </button>
@@ -1022,6 +1217,27 @@ export default function Prisma() {
             removeSaved(confirmDeleteTarget.id);
             setConfirmDeleteTarget(null);
           }}
+        />
+      )}
+
+      {editTagsTarget && (
+        <TagsEditModal
+          ui={ui}
+          name={editTagsTarget.name}
+          tags={editTagsTarget.tags}
+          onCancel={() => setEditTagsTarget(null)}
+          onSave={(tags) => {
+            updateTags(editTagsTarget.id, tags);
+            setEditTagsTarget(null);
+          }}
+        />
+      )}
+
+      {showCompareModal && (
+        <ComparePalettesModal
+          ui={ui}
+          palettes={savedPalettes.filter((p) => compareSelection[p.id])}
+          onClose={() => setShowCompareModal(false)}
         />
       )}
     </div>
