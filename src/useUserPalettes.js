@@ -31,10 +31,11 @@ export function useUserPalettes(uid) {
     return unsubscribe;
   }, [uid]);
 
-  const savePalette = (uid2, { name, colors }) =>
+  const savePalette = (uid2, { name, colors, tags }) =>
     addDoc(collection(db, "users", uid2, "palettes"), {
       name,
       colors,
+      tags: tags || [],
       fav: false,
       createdAt: serverTimestamp(),
     });
@@ -44,5 +45,8 @@ export function useUserPalettes(uid) {
   const toggleFavPalette = (uid2, paletteId, fav) =>
     updateDoc(doc(db, "users", uid2, "palettes", paletteId), { fav: !fav });
 
-  return { palettes, loading, savePalette, removePalette, toggleFavPalette };
+  const updatePaletteTags = (uid2, paletteId, tags) =>
+    updateDoc(doc(db, "users", uid2, "palettes", paletteId), { tags });
+
+  return { palettes, loading, savePalette, removePalette, toggleFavPalette, updatePaletteTags };
 }

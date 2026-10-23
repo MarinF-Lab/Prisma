@@ -67,6 +67,12 @@ export function bestTextColor(bgHex) {
   return white >= black ? "#FFFFFF" : "#000000";
 }
 
+/* Cuántos colores de una paleta pasan WCAG AA contra su mejor color de texto */
+export function paletteContrastSummary(colors) {
+  const passing = colors.filter((c) => wcagLabel(contrastRatio(c, bestTextColor(c))).ok).length;
+  return `${passing}/${colors.length} con buen contraste`;
+}
+
 /* ---------- Generación de armonías ---------- */
 
 export const HARMONIES = {
