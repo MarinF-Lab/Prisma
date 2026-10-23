@@ -4,6 +4,7 @@ import { useUserPalettes } from "./useUserPalettes.js";
 import { useColorLibrary } from "./useColorLibrary.js";
 import { LoginModal } from "./LoginModal.jsx";
 import { ExportModal } from "./ExportModal.jsx";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal.jsx";
 import { SampleLab } from "./sampleLab/SampleLab.jsx";
 import {
   bestTextColor,
@@ -71,31 +72,33 @@ function ContrastBadge({ ratio }) {
   );
 }
 
-/* Tarjeta "mockup" de paleta: título + cuerpo + link sobre fondo real */
+/* Tarjeta "mockup" de paleta: franja con los colores reales de la paleta */
 function PaletteMockupCard({ name, colors, onClick, meta }) {
-  const bg = colors[0];
-  const linkColor = colors[Math.min(2, colors.length - 1)];
-  const fg = bestTextColor(bg);
-  const fgMuted = fg === "#FFFFFF" ? "rgba(255,255,255,0.68)" : "rgba(20,20,25,0.6)";
   return (
     <button onClick={onClick} className="text-left flex-shrink-0 w-40 group">
-      <div
-        className="rounded-lg p-3 h-24 flex flex-col justify-end transition-transform group-active:scale-[0.97]"
-        style={{ background: bg }}
-      >
-        <p className="text-sm font-semibold leading-tight" style={{ color: fg }}>
-          Título
-        </p>
-        <p className="text-[11px]" style={{ color: fgMuted }}>
-          Cuerpo &{" "}
-          <span style={{ color: linkColor, fontWeight: 600 }}>link</span>
-        </p>
+      <div className="rounded-lg h-24 flex overflow-hidden transition-transform group-active:scale-[0.97]">
+        {colors.map((c, i) => (
+          <div key={i} style={{ background: c, flex: 1 }} />
+        ))}
       </div>
       <p className="text-xs font-medium mt-1.5 truncate">{name}</p>
       {meta && <p className="text-[10px] opacity-50">{meta}</p>}
     </button>
   );
 }
+
+/* Cuántos colores de una paleta pasan WCAG AA contra su mejor color de texto */
+function paletteContrastSummary(colors) {
+  const passing = colors.filter((c) => wcagLabel(contrastRatio(c, bestTextColor(c))).ok).length;
+  return `${passing}/${colors.length} con buen contraste`;
+}
+
+const encodePaletteParam = (colors) => colors.map((c) => c.replace("#", "")).join("-");
+const decodePaletteParam = (str) =>
+  str
+    .split("-")
+    .map((h) => "#" + h.toUpperCase())
+    .filter((h) => /^#[0-9A-F]{6}$/.test(h));
 
 /* Tarjeta de muestra individual dentro de la Zona de pruebas */
 function ColorSampleCard({ color, role, sampleDark, copiedKey, onCopy, locked, onToggleLock }) {
@@ -207,6 +210,35 @@ export default function Prisma() {
 
   const [saveName, setSaveName] = useState("");
   const [savedSearch, setSavedSearch] = useState("");
+  const [savedSort, setSavedSort] = useState("recientes"); // recientes | favoritas | nombre
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState(null); // { id, name } | null
+
+  const [favColors, setFavColors] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem("prisma:favColors")) || []);
+    } catch {
+      return new Set();
+    }
+  });
+  const [onlyFavColors, setOnlyFavColors] = useState(false);
+  const toggleFavColor = (hex) =>
+    setFavColors((prev) => {
+      const next = new Set(prev);
+      if (next.has(hex)) next.delete(hex);
+      else next.add(hex);
+      try {
+        localStorage.setItem("prisma:favColors", JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+
+  const [lastPalette] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("prisma:lastPalette"));
+    } catch {
+      return null;
+    }
+  });
 
   const { copiedKey, copy } = useCopy();
 
@@ -230,6 +262,27 @@ export default function Prisma() {
       setWelcomeSeen(true);
     }
   }, [authLoading, user, welcomeSeen]);
+
+  // Recuerda la última paleta trabajada (para la tarjeta "Seguir donde quedaste"
+  // de Inicio) — solo se lee una vez al montar (lastPalette), nunca se reaplica sola.
+  useEffect(() => {
+    try {
+      localStorage.setItem("prisma:lastPalette", JSON.stringify({ colors: palette, harmonyType, baseColor }));
+    } catch {}
+  }, [palette, harmonyType, baseColor]);
+
+  // Paleta compartida por link (?p=hex1-hex2-...): se aplica una sola vez al montar.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("p");
+    if (!p) return;
+    const decoded = decodePaletteParam(p);
+    if (decoded.length > 0) {
+      setPalette(decoded);
+      setCount(decoded.length);
+      setScreen("pruebas");
+    }
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   const requireLogin = () => {
     setLoginError("");
@@ -266,6 +319,11 @@ export default function Prisma() {
       return matchCat && matchSearch;
     });
   }, [colorLibrary, search, activeCategory]);
+
+  const visibleColors = useMemo(
+    () => (onlyFavColors ? filteredColors.filter((c) => favColors.has(c.hex)) : filteredColors),
+    [filteredColors, onlyFavColors, favColors]
+  );
 
   const toggleLock = (i) => {
     setLockedIndices((prev) => {
@@ -324,6 +382,13 @@ export default function Prisma() {
   const filteredSaved = savedPalettes.filter((p) =>
     p.name.toLowerCase().includes(savedSearch.trim().toLowerCase())
   );
+
+  const sortedSaved = useMemo(() => {
+    const arr = [...filteredSaved];
+    if (savedSort === "nombre") return arr.sort((a, b) => a.name.localeCompare(b.name));
+    if (savedSort === "favoritas") return arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
+    return arr; // "recientes": useUserPalettes.js ya pide orderBy("createdAt", "desc")
+  }, [filteredSaved, savedSort]);
 
   const roleFor = (i) => ROLES[i % ROLES.length];
 
@@ -444,9 +509,9 @@ export default function Prisma() {
 
               <div className="grid grid-cols-3 gap-2 mb-6">
                 {[
-                  { label: "Generar paleta", target: "pruebas" },
-                  { label: "Explorar colores", target: "explorar" },
                   { label: "Zona de pruebas", target: "pruebas" },
+                  { label: "Explorar colores", target: "explorar" },
+                  { label: "Guardadas", target: "guardadas" },
                 ].map((a) => (
                   <button
                     key={a.label}
@@ -458,6 +523,24 @@ export default function Prisma() {
                   </button>
                 ))}
               </div>
+
+              {lastPalette?.colors?.length > 0 && (
+                <div className="mb-6">
+                  <h2 className="text-sm font-medium mb-2" style={{ color: ui.muted }}>
+                    Seguir donde quedaste
+                  </h2>
+                  <PaletteMockupCard
+                    name={`${lastPalette.colors.length} colores`}
+                    colors={lastPalette.colors}
+                    onClick={() => {
+                      setPalette(lastPalette.colors);
+                      if (lastPalette.harmonyType) setHarmonyType(lastPalette.harmonyType);
+                      if (lastPalette.baseColor) setBaseColor(lastPalette.baseColor);
+                      setScreen("pruebas");
+                    }}
+                  />
+                </div>
+              )}
 
               <h2 className="text-sm font-medium mb-2" style={{ color: ui.muted }}>
                 Explorar por categoría
@@ -541,33 +624,79 @@ export default function Prisma() {
                     {cat}
                   </button>
                 ))}
+                <button
+                  onClick={() => setOnlyFavColors((v) => !v)}
+                  className="text-xs px-3 py-1 rounded-full border whitespace-nowrap flex-shrink-0"
+                  style={{
+                    borderColor: onlyFavColors ? "#8B5CF6" : ui.border,
+                    background: onlyFavColors ? "#8B5CF622" : "transparent",
+                    color: onlyFavColors ? "#8B5CF6" : ui.muted,
+                  }}
+                >
+                  ★ Favoritos
+                </button>
               </div>
 
               <p className="text-xs mb-2" style={{ color: ui.muted }}>
-                {filteredColors.length} colores
+                {visibleColors.length} colores
               </p>
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
-                {filteredColors.map((c) => (
-                  <button
-                    key={c.hex}
-                    onClick={() => {
-                      setBaseColor(c.hex);
-                      regenerate(harmonyType, count, c.hex);
-                      setScreen("pruebas");
-                    }}
-                    className="rounded-md overflow-hidden border text-left"
-                    style={{ borderColor: ui.border, background: ui.panel }}
-                  >
-                    <div className="h-12" style={{ background: c.hex }} />
-                    <div className="px-1.5 py-1">
-                      <p className="text-[10px] truncate">{c.name}</p>
-                      <p className="text-[9px]" style={{ color: ui.muted, fontFamily: "monospace" }}>
-                        {c.hex}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {visibleColors.length === 0 ? (
+                <p className="text-xs" style={{ color: ui.muted }}>
+                  No se encontraron colores con estos filtros.
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
+                  {visibleColors.map((c) => (
+                    <button
+                      key={c.hex}
+                      onClick={() => {
+                        setBaseColor(c.hex);
+                        regenerate(harmonyType, count, c.hex);
+                        setScreen("pruebas");
+                      }}
+                      className="relative group text-left"
+                    >
+                      <div className="rounded-md overflow-hidden border" style={{ borderColor: ui.border, background: ui.panel }}>
+                        <div className="h-12" style={{ background: c.hex }} />
+                        <div className="px-1.5 py-1">
+                          <p className="text-[10px] truncate">{c.name}</p>
+                          <p className="text-[9px]" style={{ color: ui.muted, fontFamily: "monospace" }}>
+                            {c.hex}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavColor(c.hex);
+                        }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                        style={{ background: "rgba(0,0,0,0.35)", color: favColors.has(c.hex) ? "#FFD56B" : "#fff" }}
+                        title={favColors.has(c.hex) ? "Quitar de favoritos" : "Agregar a favoritos"}
+                      >
+                        {favColors.has(c.hex) ? "★" : "☆"}
+                      </span>
+
+                      {/* Preview hover — solo escritorio (md+), no intercepta el click, no existe en mobile */}
+                      <div
+                        className="hidden md:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-36 flex-col items-center gap-1 rounded-lg p-2.5 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition pointer-events-none z-10"
+                        style={{ background: ui.panel2, border: `1px solid ${ui.border}`, boxShadow: "0 8px 24px rgba(0,0,0,.25)" }}
+                      >
+                        <div className="w-full h-12 rounded" style={{ background: c.hex }} />
+                        <p className="text-[11px] font-medium" style={{ color: ui.text }}>
+                          {c.name}
+                        </p>
+                        <p className="text-[10px]" style={{ color: ui.muted, fontFamily: "monospace" }}>
+                          {c.hex}
+                        </p>
+                        <ContrastBadge ratio={contrastRatio(c.hex, "#FFFFFF")} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -716,6 +845,17 @@ export default function Prisma() {
                   ⇩ Exportar
                 </button>
                 <button
+                  onClick={() => {
+                    const url = `${window.location.origin}${window.location.pathname}?p=${encodePaletteParam(palette)}`;
+                    copy("share-palette", url);
+                  }}
+                  className="text-xs px-3 py-2.5 rounded-md border font-medium"
+                  style={{ borderColor: ui.border, color: ui.text, background: ui.panel }}
+                  title="Copiar link para compartir esta paleta"
+                >
+                  {copiedKey === "share-palette" ? "Copiado ✓" : "🔗"}
+                </button>
+                <button
                   onClick={savePalette}
                   className="flex-1 text-xs px-3 py-2.5 rounded-md font-medium"
                   style={{ background: "#8B5CF6", color: "#fff" }}
@@ -744,9 +884,32 @@ export default function Prisma() {
                 value={savedSearch}
                 onChange={(e) => setSavedSearch(e.target.value)}
                 placeholder="Buscar paleta…"
-                className="w-full text-sm px-3 py-2 rounded-md border outline-none mb-4"
+                className="w-full text-sm px-3 py-2 rounded-md border outline-none mb-3"
                 style={{ background: ui.panel, borderColor: ui.border, color: ui.text }}
               />
+
+              {user && filteredSaved.length > 0 && (
+                <div className="flex gap-1.5 mb-4">
+                  {[
+                    { id: "recientes", label: "Recientes" },
+                    { id: "favoritas", label: "Favoritas" },
+                    { id: "nombre", label: "Nombre" },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSavedSort(s.id)}
+                      className="text-xs px-2.5 py-1 rounded-full border"
+                      style={{
+                        borderColor: savedSort === s.id ? "#8B5CF6" : ui.border,
+                        background: savedSort === s.id ? "#8B5CF622" : "transparent",
+                        color: savedSort === s.id ? "#8B5CF6" : ui.muted,
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {!user ? (
                 <div className="rounded-lg border p-4 text-center" style={{ borderColor: ui.border, background: ui.panel }}>
@@ -771,7 +934,7 @@ export default function Prisma() {
                 </p>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {filteredSaved.map((sp) => (
+                  {sortedSaved.map((sp) => (
                     <div
                       key={sp.id}
                       className="flex items-center gap-3 rounded-lg border p-2.5"
@@ -785,11 +948,22 @@ export default function Prisma() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{sp.name}</p>
                         <p className="text-[11px]" style={{ color: ui.muted }}>
-                          {sp.colors.length} colores
+                          {sp.colors.length} colores · {paletteContrastSummary(sp.colors)}
                         </p>
                       </div>
                       <button onClick={() => toggleFav(sp.id, sp.fav)} className="text-lg leading-none">
                         {sp.fav ? "♥" : "♡"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          const url = `${window.location.origin}${window.location.pathname}?p=${encodePaletteParam(sp.colors)}`;
+                          copy(`share-${sp.id}`, url);
+                        }}
+                        className="text-[11px] px-2 py-1 rounded border"
+                        style={{ borderColor: ui.border, color: ui.muted }}
+                        title="Copiar link para compartir"
+                      >
+                        {copiedKey === `share-${sp.id}` ? "Copiado ✓" : "🔗"}
                       </button>
                       <button
                         onClick={() => {
@@ -802,7 +976,7 @@ export default function Prisma() {
                         Cargar
                       </button>
                       <button
-                        onClick={() => removeSaved(sp.id)}
+                        onClick={() => setConfirmDeleteTarget({ id: sp.id, name: sp.name })}
                         className="text-[11px] px-2 py-1 rounded border"
                         style={{ borderColor: "#D6454555", color: "#D64545" }}
                       >
@@ -838,6 +1012,18 @@ export default function Prisma() {
       )}
 
       {exportOpen && <ExportModal ui={ui} colors={palette} onClose={() => setExportOpen(false)} />}
+
+      {confirmDeleteTarget && (
+        <ConfirmDeleteModal
+          ui={ui}
+          name={confirmDeleteTarget.name}
+          onCancel={() => setConfirmDeleteTarget(null)}
+          onConfirm={() => {
+            removeSaved(confirmDeleteTarget.id);
+            setConfirmDeleteTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }
