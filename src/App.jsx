@@ -433,7 +433,7 @@ export default function Prisma() {
         </header>
 
         <main className="px-4 md:px-6 lg:px-8 pb-24 md:pb-8">
-        <div className="max-w-md md:max-w-2xl lg:max-w-5xl mx-auto">
+        <div className={`max-w-md md:max-w-2xl mx-auto ${screen === "pruebas" && sampleView === "interfaz" ? "lg:max-w-7xl" : "lg:max-w-5xl"}`}>
           {/* ================= INICIO ================= */}
           {screen === "inicio" && (
             <>

@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { SAMPLE_LAB_SECTIONS, sectionFields, FieldLabel } from "./sampleLabSections.jsx";
 import { FloatingSectionModal } from "./FloatingSectionModal.jsx";
 
-// Vista móvil estilo Canva: una barra horizontal de íconos (en flujo normal, no
-// fija — la app ya tiene su propia nav inferior fija) reemplaza la lista larga de
-// cards; tocar un ícono abre un modal flotante simple con los controles de esa
-// sección agrupada. "Exportar" no abre un modal propio: dispara el que ya existe.
+// Barra de controles del Laboratorio, estilo Canva, igual en móvil/tablet/
+// escritorio: una fila horizontal de íconos (en flujo normal, no fija — la app
+// ya tiene su propia nav inferior fija en mobile) reemplaza cualquier riel
+// lateral, para que la muestra sea siempre la protagonista del espacio. Tocar
+// un ícono abre un modal flotante simple con los controles de esa sección
+// agrupada. "Exportar" no abre un modal propio: dispara el que ya existe.
 export function SampleLabMobileControls({ ui, palette, lab }) {
   const [openSectionId, setOpenSectionId] = useState(null);
   const openSection = SAMPLE_LAB_SECTIONS.find((s) => s.id === openSectionId) || null;

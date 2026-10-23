@@ -8,12 +8,12 @@ import { Botones, Switch, Modal, Tooltip } from "./pieces/InteractivePieces.jsx"
 
 // Marco de dispositivo alrededor del lienzo — siempre hay uno (no existe la
 // opción "sin marco"): navegador para escritorio, celular para móvil/tablet.
-function DeviceChrome({ deviceFrame, maxWidth, children }) {
+function DeviceChrome({ deviceFrame, width, children }) {
   if (deviceFrame === "navegador") {
     return (
       <div
-        className="mx-auto overflow-hidden"
-        style={{ maxWidth, width: "100%", background: "#D8D8DC", borderRadius: 14, boxShadow: "0 10px 30px rgba(0,0,0,.18)" }}
+        className="mx-auto overflow-hidden flex-shrink-0"
+        style={{ width, background: "#D8D8DC", borderRadius: 14, boxShadow: "0 10px 30px rgba(0,0,0,.18)" }}
       >
         <div className="flex" style={{ gap: 6, padding: "10px 12px", background: "#E8E8EC" }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#FF5F57" }} />
@@ -26,8 +26,8 @@ function DeviceChrome({ deviceFrame, maxWidth, children }) {
   }
   return (
     <div
-      className="mx-auto"
-      style={{ maxWidth, width: "100%", background: "#1A1A1E", padding: "14px 10px 20px", borderRadius: 34, boxShadow: "0 14px 34px rgba(0,0,0,.28)" }}
+      className="mx-auto flex-shrink-0"
+      style={{ width, background: "#1A1A1E", padding: "14px 10px 20px", borderRadius: 34, boxShadow: "0 14px 34px rgba(0,0,0,.28)" }}
     >
       <div className="mx-auto" style={{ width: 64, height: 16, background: "#1A1A1E", borderRadius: "0 0 10px 10px", marginBottom: 8, position: "relative" }}>
         <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 30, height: 4, borderRadius: 2, background: "#000" }} />
@@ -153,7 +153,7 @@ export function SampleLabCanvas({ ui, palette, lab }) {
   if (vc.tooltip)
     innerBlocks.push(<Tooltip key="tooltip" ctx={ctx} tooltipOpen={lab.tooltipOpen} onToggle={() => lab.setTooltipOpen((v) => !v)} />);
 
-  const maxWidth = preset.width ? preset.width : "100%";
+  const deviceWidth = preset.width;
 
   return (
     <div>
@@ -165,11 +165,12 @@ export function SampleLabCanvas({ ui, palette, lab }) {
         {preset.label}
       </div>
       <div className="rounded-2xl p-5 flex justify-center overflow-x-auto" style={{ background: ui.panel2, border: `1px solid ${ui.border}` }}>
-        <DeviceChrome deviceFrame={preset.frame} maxWidth={maxWidth}>
+        <DeviceChrome deviceFrame={preset.frame} width={deviceWidth}>
           <div
-            className="flex flex-col overflow-hidden max-h-[55vh] lg:max-h-[70vh]"
+            className="flex flex-col overflow-hidden"
             style={{
               background: surf.bg,
+              maxHeight: preset.maxHeight,
               borderRadius: preset.frame === "navegador" ? `0 0 ${radBlock} ${radBlock}` : radBlock,
             }}
           >

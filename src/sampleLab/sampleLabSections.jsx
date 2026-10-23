@@ -8,17 +8,9 @@ import {
   IconComponentes, IconRoles, IconEstilo, IconFondo, IconBotones, IconTipografia, IconPantalla, IconExportar,
 } from "./sampleLabIcons.jsx";
 
-// Helpers de presentación compartidos por el riel de escritorio (SampleLabControls)
-// y la hoja flotante de mobile (SampleLabMobileControls) — un solo lugar de verdad.
-export function Card({ ui, title, children }) {
-  return (
-    <div className="rounded-lg border p-3 mb-2.5" style={{ borderColor: ui.border, background: ui.panel }}>
-      <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: ui.muted }}>{title}</p>
-      {children}
-    </div>
-  );
-}
-
+// Helpers de presentación para los campos del Laboratorio, mostrados en la
+// hoja flotante de SampleLabMobileControls (único riel de controles ahora,
+// igual en móvil/tablet/escritorio).
 export function FieldLabel({ ui, children }) {
   return (
     <p className="text-[10px] font-bold uppercase tracking-wide mt-3 mb-1.5 first:mt-0" style={{ color: ui.muted }}>
@@ -89,7 +81,7 @@ export function RoleRow({ ui, role, lab, palette }) {
 }
 
 // Los 11 campos finos de siempre — cada uno expone solo su contenido (sin wrapper),
-// para que el escritorio los meta en una <Card> y mobile los meta en una hoja flotante.
+// listo para que la hoja flotante de SampleLabMobileControls los agrupe por sección.
 export const SAMPLE_LAB_FIELDS = [
   {
     id: "componentes",

@@ -71,9 +71,9 @@ export const BACKGROUND_LABELS = { claro: "Claro", oscuro: "Oscuro", personaliza
 // Simulador de dispositivo dentro del lienzo — independiente del ancho real de
 // la ventana del navegador. Cada preset siempre viene con su marco (nunca "sin marco").
 export const DEVICE_PRESETS = {
-  movil: { width: 375, label: "Móvil · 375px", frame: "celular" },
-  tablet: { width: 680, label: "Tablet · 680px", frame: "celular" },
-  escritorio: { width: null, label: "Escritorio", frame: "navegador" },
+  movil: { width: 375, label: "Móvil · 375px", frame: "celular", maxHeight: "62vh" },
+  tablet: { width: 680, label: "Tablet · 680px", frame: "celular", maxHeight: "74vh" },
+  escritorio: { width: 1100, label: "Escritorio · 1100px", frame: "navegador", maxHeight: "80vh" },
 };
 export const DEVICE_PRESET_LABELS = Object.fromEntries(
   Object.entries(DEVICE_PRESETS).map(([k, v]) => [k, v.label.split(" ·")[0]])
